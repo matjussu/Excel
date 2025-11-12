@@ -139,7 +139,7 @@ def process_excel_file(file_path):
     # Traiter Device Info
     if DEVICE_INFO_SHEET in xls.sheet_names:
         try:
-            df_device = pd.read_excel(xls, sheet_name=DEVICE_INFO_SHEET, header=None)
+            df_device = xls.parse(DEVICE_INFO_SHEET, header=None)
             device_results = process_device_info(df_device)
             all_results.extend(device_results)
             print(f"  - {len(device_results)} entrées trouvées dans {DEVICE_INFO_SHEET}")
@@ -151,7 +151,7 @@ def process_excel_file(file_path):
     # Traiter User Accounts
     if USER_ACCOUNTS_SHEET in xls.sheet_names:
         try:
-            df_accounts = pd.read_excel(xls, sheet_name=USER_ACCOUNTS_SHEET, header=0)
+            df_accounts = xls.parse(USER_ACCOUNTS_SHEET, header=0)
             accounts_results = process_user_accounts(df_accounts)
             all_results.extend(accounts_results)
             print(f"  - {len(accounts_results)} entrées trouvées dans {USER_ACCOUNTS_SHEET}")
