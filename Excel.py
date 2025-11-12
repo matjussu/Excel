@@ -151,7 +151,7 @@ def process_excel_file(file_path):
     # Traiter User Accounts
     if USER_ACCOUNTS_SHEET in xls.sheet_names:
         try:
-            df_accounts = xls.parse(USER_ACCOUNTS_SHEET, header=0)
+            df_accounts = pd.read_excel(xls, sheet_name=USER_ACCOUNTS_SHEET, header=1)  # header=1 car colonnes sur ligne 2
             accounts_results = process_user_accounts(df_accounts)
             all_results.extend(accounts_results)
             print(f"  - {len(accounts_results)} entrées trouvées dans {USER_ACCOUNTS_SHEET}")
