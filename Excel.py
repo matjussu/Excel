@@ -39,6 +39,9 @@ def process_device_info(df):
     if df.empty:
         return results
 
+    # Afficher les colonnes disponibles pour déboguer
+    print(f"    Colonnes disponibles: {list(df.columns)}")
+
     # Mapping des types recherchés vers leur catégorie MDC
     device_mappings = {
         "IMEI": {"MDC": "Téléphone", "Types": "IMEI"},
@@ -50,14 +53,34 @@ def process_device_info(df):
         "Bluetooth Address": {"MDC": "IOC", "Types": "Bluetooth"},
     }
 
+    # Trouver les colonnes de façon flexible (insensible à la casse)
+    columns_lower = {col.lower() if isinstance(col, str) else str(col).lower(): col for col in df.columns}
+
+    # Chercher les colonnes "nom" et "value" (ou similaires)
+    nom_col = None
+    value_col = None
+
+    for key, col in columns_lower.items():
+        if "name" in key or "nom" in key:
+            nom_col = col
+        if "value" in key or "valeur" in key:
+            value_col = col
+
+    # Si pas trouvé par nom, utiliser les 2 dernières colonnes
+    if not nom_col or not value_col:
+        if len(df.columns) >= 2:
+            nom_col = df.columns[-2]
+            value_col = df.columns[-1]
+            print(f"    Utilisation des 2 dernières colonnes: {nom_col}, {value_col}")
+
+    if not nom_col or not value_col:
+        print("Warning: Colonnes 'nom' et 'value' non trouvées dans Device Info")
+        return results
+
     # Parcourir toutes les lignes
     for idx, row in df.iterrows():
-        # Récupérer les colonnes (supposant que les colonnes sont dans cet ordre: Index, Catégorie, Nom, Value)
-        if len(row) < 4:
-            continue
-
-        nom = str(row.iloc[2]).strip() if not pd.isna(row.iloc[2]) else ""
-        value = str(row.iloc[3]).strip() if not pd.isna(row.iloc[3]) else ""
+        nom = str(row[nom_col]).strip() if not pd.isna(row[nom_col]) else ""
+        value = str(row[value_col]).strip() if not pd.isna(row[value_col]) else ""
 
         if not nom or not value or value == "nan":
             continue
@@ -139,12 +162,14 @@ def process_excel_file(file_path):
     # Traiter Device Info
     if DEVICE_INFO_SHEET in xls.sheet_names:
         try:
-            df_device = xls.parse(DEVICE_INFO_SHEET, header=None)
+            df_device = pd.read_excel(xls, sheet_name=DEVICE_INFO_SHEET, header=1)  # header=1 car colonnes sur ligne 2
             device_results = process_device_info(df_device)
             all_results.extend(device_results)
             print(f"  - {len(device_results)} entrées trouvées dans {DEVICE_INFO_SHEET}")
         except Exception as e:
             print(f"Error processing {DEVICE_INFO_SHEET}: {e}")
+            import traceback
+            traceback.print_exc()
     else:
         print(f"  - Sheet '{DEVICE_INFO_SHEET}' non trouvée")
 
