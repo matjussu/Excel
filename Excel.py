@@ -83,16 +83,26 @@ def process_user_accounts(df):
     if df.empty:
         return results
 
-    # Vérifier que les colonnes existent
-    if "entries" not in df.columns or "source" not in df.columns:
+    # Afficher les colonnes disponibles pour déboguer
+    print(f"    Colonnes disponibles: {list(df.columns)}")
+
+    # Trouver les colonnes de façon flexible (insensible à la casse)
+    columns_lower = {col.lower(): col for col in df.columns}
+
+    entries_col = columns_lower.get("entries")
+    source_col = columns_lower.get("source")
+    account_name_col = columns_lower.get("account name")
+
+    if not entries_col or not source_col:
         print("Warning: Colonnes 'entries' ou 'source' non trouvées dans User Accounts")
+        print(f"    Colonnes trouvées: {list(df.columns)}")
         return results
 
     # Parcourir toutes les lignes
     for idx, row in df.iterrows():
-        entries = str(row["entries"]).strip() if not pd.isna(row["entries"]) else ""
-        source = str(row["source"]).strip() if not pd.isna(row["source"]) else ""
-        account_name = str(row["account name"]).strip() if "account name" in df.columns and not pd.isna(row["account name"]) else ""
+        entries = str(row[entries_col]).strip() if not pd.isna(row[entries_col]) else ""
+        source = str(row[source_col]).strip() if not pd.isna(row[source_col]) else ""
+        account_name = str(row[account_name_col]).strip() if account_name_col and not pd.isna(row[account_name_col]) else ""
 
         if not entries or entries == "nan":
             continue
@@ -147,6 +157,8 @@ def process_excel_file(file_path):
             print(f"  - {len(accounts_results)} entrées trouvées dans {USER_ACCOUNTS_SHEET}")
         except Exception as e:
             print(f"Error processing {USER_ACCOUNTS_SHEET}: {e}")
+            import traceback
+            traceback.print_exc()
     else:
         print(f"  - Sheet '{USER_ACCOUNTS_SHEET}' non trouvée")
 
@@ -183,6 +195,12 @@ if __name__ == "__main__":
     # Créer le DataFrame final
     df_output = pd.DataFrame(all_data, columns=OUTPUT_COLUMNS)
 
+    # Supprimer les doublons
+    nb_avant = len(df_output)
+    df_output = df_output.drop_duplicates()
+    nb_apres = len(df_output)
+    nb_doublons = nb_avant - nb_apres
+
     # Créer le fichier de sortie
     output_file = os.path.join(OUTPUT_FOLDER, "Info_Perso.xlsx")
 
@@ -190,6 +208,6 @@ if __name__ == "__main__":
         df_output.to_excel(writer, sheet_name="Info_Perso", index=False)
 
     print("\n" + "=" * 60)
-    print(f"TERMINÉ ! {len(all_data)} entrées extraites")
+    print(f"TERMINÉ ! {nb_apres} entrées extraites ({nb_doublons} doublons supprimés)")
     print(f"Fichier créé : {output_file}")
     print("=" * 60)
