@@ -159,6 +159,40 @@ def process_user_accounts(df):
     return results
 
 
+def extract_phone_numbers(entries_text, country_code="999"):
+    """Extrait et formate les numéros de téléphone depuis le texte entries"""
+    if not entries_text or entries_text == "nan":
+        return ""
+
+    # Retirer les préfixes comme "Phone-General: "
+    # Utiliser regex pour capturer les numéros après le préfixe
+    import re
+
+    # Pattern pour trouver les numéros (après Phone-General: ou similaire)
+    pattern = r'(?:Phone-General:\s*)?(\+?\d[\d\s\.-]+)'
+
+    matches = re.findall(pattern, entries_text, re.IGNORECASE)
+
+    if not matches:
+        return ""
+
+    # Nettoyer et formater les numéros
+    formatted_numbers = []
+    for num in matches:
+        # Nettoyer le numéro (retirer espaces, points, tirets)
+        clean_num = re.sub(r'[\s\.-]', '', num)
+
+        # Si le numéro commence déjà par +, le garder tel quel
+        if clean_num.startswith('+'):
+            formatted_numbers.append(clean_num)
+        else:
+            # Ajouter l'indicatif pays
+            formatted_numbers.append(f"+{country_code}{clean_num}")
+
+    # Joindre tous les numéros avec un espace
+    return ' '.join(formatted_numbers)
+
+
 def process_contacts(df):
     """Extrait les données de la feuille Contacts"""
     contacts_sim = []
@@ -201,16 +235,22 @@ def process_contacts(df):
         # Déterminer le Type1 selon la source
         type1 = "Téléphone" if source.upper() == "SIM" else "Vecteur de com"
 
+        # Extraire et formater les numéros de téléphone
+        num1 = extract_phone_numbers(entries)
+
+        # Créer le commentaire
+        commentaire = f"Nom : {name if name and name != 'nan' else ''} Tel : {entries}"
+
         # Créer l'entrée
         contact_entry = {
             "Name": name if name and name != "nan" else "",
             "Entries": entries,
-            "Num1": "",
+            "Num1": num1,
             "Type1": type1,
-            "relation": "",
+            "relation": "apparaît dans le carnet d'adresse de",
             "Num2": "",
             "Type2": "",
-            "commentaire": ""
+            "commentaire": commentaire
         }
 
         # Répartir selon la source
