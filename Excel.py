@@ -109,16 +109,20 @@ def process_user_accounts(df):
     # Afficher les colonnes disponibles pour déboguer
     print(f"    Colonnes disponibles: {list(df.columns)}")
 
-    # Trouver les colonnes de façon flexible (insensible à la casse)
-    columns_lower = {col.lower(): col for col in df.columns}
+    # Trouver les colonnes de façon flexible (insensible à la casse et strip des espaces)
+    columns_lower = {str(col).strip().lower(): col for col in df.columns}
+
+    print(f"    Clés créées: {list(columns_lower.keys())}")
 
     entries_col = columns_lower.get("entries")
     source_col = columns_lower.get("source")
     account_name_col = columns_lower.get("account name")
 
+    print(f"    entries_col trouvée: {entries_col}")
+    print(f"    source_col trouvée: {source_col}")
+
     if not entries_col or not source_col:
         print("Warning: Colonnes 'entries' ou 'source' non trouvées dans User Accounts")
-        print(f"    Colonnes trouvées: {list(df.columns)}")
         return results
 
     # Parcourir toutes les lignes
