@@ -132,6 +132,11 @@ def process_user_accounts(df):
         source = str(row[source_col]).strip() if not pd.isna(row[source_col]) else ""
         account_name = str(row[account_name_col]).strip() if account_name_col and not pd.isna(row[account_name_col]) else ""
 
+        # Remplacer les sauts de ligne par des espaces dans entries
+        entries = entries.replace('\n', ' ').replace('\r', ' ')
+        # Supprimer les espaces multiples
+        entries = ' '.join(entries.split())
+
         if not entries or entries == "nan":
             continue
 
