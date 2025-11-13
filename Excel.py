@@ -120,6 +120,7 @@ def process_user_accounts(df):
 
     print(f"    entries_col trouvée: {entries_col}")
     print(f"    source_col trouvée: {source_col}")
+    print(f"    account_name_col trouvée: {account_name_col}")
 
     if not entries_col or not source_col:
         print("Warning: Colonnes 'entries' ou 'source' non trouvées dans User Accounts")
