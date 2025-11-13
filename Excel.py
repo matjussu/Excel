@@ -10,9 +10,11 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 # Noms des feuilles à analyser
 DEVICE_INFO_SHEET = "Device Info"
 USER_ACCOUNTS_SHEET = "User Accounts"
+CONTACTS_SHEET = "Contacts"
 
 # Colonnes de sortie
 OUTPUT_COLUMNS = ["MDC", "Types", "Numéro associé", "Name"]
+CONTACTS_COLUMNS = ["Name", "Entries", "Num1", "Type1", "relation", "Num2", "Type2", "commentaire"]
 
 
 def is_phone_number(text):
@@ -157,17 +159,82 @@ def process_user_accounts(df):
     return results
 
 
+def process_contacts(df):
+    """Extrait les données de la feuille Contacts"""
+    contacts_sim = []
+    contacts_whatsapp = []
+
+    if df.empty:
+        return contacts_sim, contacts_whatsapp
+
+    # Afficher les colonnes disponibles pour déboguer
+    print(f"    Colonnes disponibles: {list(df.columns)}")
+
+    # Trouver les colonnes de façon flexible (insensible à la casse et strip des espaces)
+    columns_lower = {str(col).strip().lower(): col for col in df.columns}
+
+    name_col = columns_lower.get("name")
+    entries_col = columns_lower.get("entries")
+    source_col = columns_lower.get("source")
+
+    print(f"    name_col trouvée: {name_col}")
+    print(f"    entries_col trouvée: {entries_col}")
+    print(f"    source_col trouvée: {source_col}")
+
+    if not name_col or not entries_col or not source_col:
+        print("Warning: Colonnes 'name', 'entries' ou 'source' non trouvées dans Contacts")
+        return contacts_sim, contacts_whatsapp
+
+    # Parcourir toutes les lignes
+    for idx, row in df.iterrows():
+        name = str(row[name_col]).strip() if not pd.isna(row[name_col]) else ""
+        entries = str(row[entries_col]).strip() if not pd.isna(row[entries_col]) else ""
+        source = str(row[source_col]).strip() if not pd.isna(row[source_col]) else ""
+
+        # Remplacer les sauts de ligne par des espaces dans entries
+        entries = entries.replace('\n', ' ').replace('\r', ' ')
+        entries = ' '.join(entries.split())
+
+        if not entries or entries == "nan":
+            continue
+
+        # Déterminer le Type1 selon la source
+        type1 = "Téléphone" if source.upper() == "SIM" else "Vecteur de com"
+
+        # Créer l'entrée
+        contact_entry = {
+            "Name": name if name and name != "nan" else "",
+            "Entries": entries,
+            "Num1": "",
+            "Type1": type1,
+            "relation": "",
+            "Num2": "",
+            "Type2": "",
+            "commentaire": ""
+        }
+
+        # Répartir selon la source
+        if source.upper() == "SIM":
+            contacts_sim.append(contact_entry)
+        else:
+            contacts_whatsapp.append(contact_entry)
+
+    return contacts_sim, contacts_whatsapp
+
+
 def process_excel_file(file_path):
     """Traite un fichier Excel et extrait les informations"""
     print(f"Processing {os.path.basename(file_path)}...")
 
     all_results = []
+    all_contacts_sim = []
+    all_contacts_whatsapp = []
 
     try:
         xls = pd.ExcelFile(file_path)
     except Exception as e:
         print(f"Error reading file {file_path}: {e}")
-        return all_results
+        return all_results, all_contacts_sim, all_contacts_whatsapp
 
     # Traiter Device Info
     if DEVICE_INFO_SHEET in xls.sheet_names:
@@ -197,7 +264,23 @@ def process_excel_file(file_path):
     else:
         print(f"  - Sheet '{USER_ACCOUNTS_SHEET}' non trouvée")
 
-    return all_results
+    # Traiter Contacts
+    if CONTACTS_SHEET in xls.sheet_names:
+        try:
+            df_contacts = pd.read_excel(xls, sheet_name=CONTACTS_SHEET, header=1)  # header=1 car colonnes sur ligne 2
+            contacts_sim, contacts_whatsapp = process_contacts(df_contacts)
+            all_contacts_sim.extend(contacts_sim)
+            all_contacts_whatsapp.extend(contacts_whatsapp)
+            print(f"  - {len(contacts_sim)} contacts SIM trouvés dans {CONTACTS_SHEET}")
+            print(f"  - {len(contacts_whatsapp)} contacts WhatsApp trouvés dans {CONTACTS_SHEET}")
+        except Exception as e:
+            print(f"Error processing {CONTACTS_SHEET}: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print(f"  - Sheet '{CONTACTS_SHEET}' non trouvée")
+
+    return all_results, all_contacts_sim, all_contacts_whatsapp
 
 
 if __name__ == "__main__":
@@ -220,14 +303,18 @@ if __name__ == "__main__":
     print(f"\n{len(files)} fichier(s) trouvé(s)\n")
 
     all_data = []
+    all_contacts_sim = []
+    all_contacts_whatsapp = []
 
     # Traiter chaque fichier
     for file_name in files:
         file_path = os.path.join(INPUT_FOLDER, file_name)
-        results = process_excel_file(file_path)
+        results, contacts_sim, contacts_whatsapp = process_excel_file(file_path)
         all_data.extend(results)
+        all_contacts_sim.extend(contacts_sim)
+        all_contacts_whatsapp.extend(contacts_whatsapp)
 
-    # Créer le DataFrame final
+    # Créer le DataFrame pour Info_Perso
     df_output = pd.DataFrame(all_data, columns=OUTPUT_COLUMNS)
 
     # Supprimer les doublons
@@ -236,13 +323,31 @@ if __name__ == "__main__":
     nb_apres = len(df_output)
     nb_doublons = nb_avant - nb_apres
 
+    # Créer les DataFrames pour les contacts
+    df_contacts_sim = pd.DataFrame(all_contacts_sim, columns=CONTACTS_COLUMNS)
+    df_contacts_whatsapp = pd.DataFrame(all_contacts_whatsapp, columns=CONTACTS_COLUMNS)
+
+    # Supprimer les doublons pour les contacts
+    nb_contacts_sim_avant = len(df_contacts_sim)
+    df_contacts_sim = df_contacts_sim.drop_duplicates()
+    nb_contacts_sim_apres = len(df_contacts_sim)
+
+    nb_contacts_whatsapp_avant = len(df_contacts_whatsapp)
+    df_contacts_whatsapp = df_contacts_whatsapp.drop_duplicates()
+    nb_contacts_whatsapp_apres = len(df_contacts_whatsapp)
+
     # Créer le fichier de sortie
     output_file = os.path.join(OUTPUT_FOLDER, "Info_Perso.xlsx")
 
     with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
         df_output.to_excel(writer, sheet_name="Info_Perso", index=False)
+        df_contacts_sim.to_excel(writer, sheet_name="Feuil_Contacts", index=False)
+        df_contacts_whatsapp.to_excel(writer, sheet_name="Feuil_What'sapp", index=False)
 
     print("\n" + "=" * 60)
-    print(f"TERMINÉ ! {nb_apres} entrées extraites ({nb_doublons} doublons supprimés)")
+    print(f"TERMINÉ !")
+    print(f"  - Info_Perso: {nb_apres} entrées ({nb_doublons} doublons supprimés)")
+    print(f"  - Feuil_Contacts: {nb_contacts_sim_apres} entrées ({nb_contacts_sim_avant - nb_contacts_sim_apres} doublons supprimés)")
+    print(f"  - Feuil_What'sapp: {nb_contacts_whatsapp_apres} entrées ({nb_contacts_whatsapp_avant - nb_contacts_whatsapp_apres} doublons supprimés)")
     print(f"Fichier créé : {output_file}")
     print("=" * 60)
