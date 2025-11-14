@@ -298,21 +298,17 @@ def process_call_log(df, country_code="999"):
         # Formater le numéro de téléphone
         num1 = extract_phone_numbers(parties, country_code)
 
-        # DEBUG : Afficher les premières valeurs pour comprendre
-        if idx < 3:  # Seulement les 3 premières lignes
-            print(f"      [DEBUG ligne {idx}] parties='{parties}' | direction='{direction}' | direction_value='{direction_value}'")
-
-        call_log_entry = {
-            "Parties": parties,
-            "Direction": direction_value,
-            "Num1": num1 if num1 else parties,  # Si extraction échoue, garder parties
-            "Type": "Téléphone",
-            "Relation": relation,
-            "Num2": "",
-            "Durée": duration if duration and duration != "nan" else "",
-            "Dates": date if date and date != "nan" else "",
-            "Heure": time if time and time != "nan" else ""
-        }
+        # Créer l'entrée (ATTENTION : les clés doivent correspondre EXACTEMENT à CALL_LOG_COLUMNS)
+        call_log_entry = {}
+        call_log_entry["Parties"] = parties
+        call_log_entry["Direction"] = direction_value
+        call_log_entry["Num1"] = num1 if num1 else parties
+        call_log_entry["Type"] = "Téléphone"
+        call_log_entry["Relation"] = relation
+        call_log_entry["Num2"] = ""
+        call_log_entry["Durée"] = duration if duration and duration != "nan" else ""
+        call_log_entry["Dates"] = date if date and date != "nan" else ""
+        call_log_entry["Heure"] = time if time and time != "nan" else ""
 
         call_log_entries.append(call_log_entry)
 
@@ -458,20 +454,6 @@ if __name__ == "__main__":
 
         df_call_log = pd.DataFrame(call_log, columns=CALL_LOG_COLUMNS)
         nb_call_avant = len(df_call_log)
-
-        # DEBUG : Afficher le premier élément de la liste
-        if len(call_log) > 0:
-            print(f"  [DEBUG Premier élément de call_log]")
-            print(f"    Type: {type(call_log[0])}")
-            print(f"    Clés: {call_log[0].keys() if isinstance(call_log[0], dict) else 'N/A'}")
-            print(f"    Parties: '{call_log[0].get('Parties', 'KEY NOT FOUND')}'")
-            print(f"    Direction: '{call_log[0].get('Direction', 'KEY NOT FOUND')}'")
-
-        # DEBUG : Afficher les premières lignes du DataFrame
-        if nb_call_avant > 0:
-            print(f"  [DEBUG DataFrame Call log - 3 premières lignes]")
-            print(df_call_log[["Parties", "Direction", "Num1"]].head(3))
-
         df_call_log = df_call_log.drop_duplicates()
         nb_call_apres = len(df_call_log)
         nb_call_doublons = nb_call_avant - nb_call_apres
