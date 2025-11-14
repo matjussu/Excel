@@ -253,7 +253,11 @@ def process_call_log(df, country_code="999"):
     call_log_entries = []
 
     if df.empty:
+        print("    [DEBUG] DataFrame Call log est vide")
         return call_log_entries
+
+    print(f"    [DEBUG] Call log - Nombre de lignes : {len(df)}")
+    print(f"    [DEBUG] Call log - Colonnes disponibles : {list(df.columns)}")
 
     columns_lower = {str(col).strip().lower(): col for col in df.columns}
 
@@ -264,7 +268,11 @@ def process_call_log(df, country_code="999"):
     direction_col = columns_lower.get("direction")
     source_col = columns_lower.get("source")
 
+    print(f"    [DEBUG] parties_col trouvée : {parties_col}")
+    print(f"    [DEBUG] direction_col trouvée : {direction_col}")
+
     if not parties_col:
+        print("    [DEBUG] Colonne 'parties' non trouvée !")
         return call_log_entries
 
     for idx, row in df.iterrows():
@@ -301,6 +309,7 @@ def process_call_log(df, country_code="999"):
 
         call_log_entries.append(call_log_entry)
 
+    print(f"    [DEBUG] Call log - Entrées extraites : {len(call_log_entries)}")
     return call_log_entries
 
 
@@ -348,13 +357,19 @@ def process_excel_file(file_path, country_code="999"):
             print(f"  ✗ Erreur Contacts : {e}")
 
     # Traiter Call log
+    print(f"  [DEBUG] Feuilles disponibles : {xls.sheet_names}")
     if CALL_LOG_SHEET in xls.sheet_names:
+        print(f"  [DEBUG] Feuille '{CALL_LOG_SHEET}' détectée")
         try:
             df_call_log = pd.read_excel(xls, sheet_name=CALL_LOG_SHEET, header=1)
             call_log_entries = process_call_log(df_call_log, country_code)
             all_call_log.extend(call_log_entries)
         except Exception as e:
             print(f"  ✗ Erreur Call log : {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print(f"  [DEBUG] Feuille '{CALL_LOG_SHEET}' NON TROUVÉE")
 
     return all_results, all_contacts_sim, all_contacts_whatsapp, all_call_log, all_imsi
 
