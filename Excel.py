@@ -16,6 +16,40 @@ CONTACTS_SHEET = "Contacts"
 OUTPUT_COLUMNS = ["MDC", "Types", "Numéro associé", "Name"]
 CONTACTS_COLUMNS = ["Name", "Entries", "Num1", "Type1", "relation", "Num2", "Type2", "commentaire"]
 
+# Mapping MCC (Mobile Country Code) vers indicatif téléphonique
+MCC_TO_COUNTRY_CODE = {
+    "208": "33",   # France
+    "262": "49",   # Allemagne
+    "234": "44",   # Royaume-Uni
+    "222": "39",   # Italie
+    "214": "34",   # Espagne
+    "206": "32",   # Belgique
+    "228": "41",   # Suisse
+    "621": "234",  # Nigéria
+    "655": "27",   # Afrique du Sud
+    "310": "1",    # États-Unis
+    "311": "1",    # États-Unis
+    "312": "1",    # États-Unis
+    "313": "1",    # États-Unis
+    "316": "1",    # États-Unis
+    "460": "86",   # Chine
+    "404": "91",   # Inde
+    "405": "91",   # Inde
+    "440": "81",   # Japon
+    "441": "81",   # Japon
+    "505": "61",   # Australie
+}
+
+
+def get_country_code_from_imsi(imsi):
+    """Extrait le code pays depuis un IMSI"""
+    if not imsi or len(str(imsi)) < 3:
+        return None
+
+    # Les 3 premiers chiffres = MCC (Mobile Country Code)
+    mcc = str(imsi)[:3]
+    return MCC_TO_COUNTRY_CODE.get(mcc)
+
 
 def is_phone_number(text):
     """Détecte si le texte est un numéro de téléphone"""
@@ -37,9 +71,10 @@ def is_phone_number(text):
 def process_device_info(df):
     """Extrait les données de la feuille Device Info"""
     results = []
+    imsi_list = []
 
     if df.empty:
-        return results
+        return results, imsi_list
 
     # Afficher les colonnes disponibles pour déboguer
     print(f"    Colonnes disponibles: {list(df.columns)}")
@@ -96,9 +131,14 @@ def process_device_info(df):
                     "Numéro associé": value,
                     "Name": ""
                 })
+
+                # Si c'est un IMSI, le sauvegarder
+                if key == "IMSI":
+                    imsi_list.append(value)
+
                 break
 
-    return results
+    return results, imsi_list
 
 
 def process_user_accounts(df):
@@ -182,20 +222,26 @@ def extract_phone_numbers(entries_text, country_code="999"):
         # Nettoyer le numéro (retirer espaces, points, tirets, et le +)
         clean_num = re.sub(r'[\s\.\-\+]', '', num)
 
-        # Si le numéro commence par un indicatif international (ex: 234), le garder tel quel
-        # Sinon, ajouter l'indicatif pays
+        # Si le numéro est vide, ignorer
+        if not clean_num:
+            continue
+
+        # Si le numéro commence par un indicatif international (plus de 10 chiffres et pas de 0 au début)
         if len(clean_num) > 10 and not clean_num.startswith('0'):
-            # Probablement déjà un numéro international
+            # Probablement déjà un numéro international, le garder tel quel
             formatted_numbers.append(clean_num)
+        elif clean_num.startswith('0'):
+            # Remplacer le 0 par l'indicatif pays
+            formatted_numbers.append(f"{country_code}{clean_num[1:]}")
         else:
-            # Ajouter l'indicatif pays (sans le +)
+            # Ajouter l'indicatif pays devant
             formatted_numbers.append(f"{country_code}{clean_num}")
 
     # Joindre tous les numéros avec un espace
     return ' '.join(formatted_numbers)
 
 
-def process_contacts(df):
+def process_contacts(df, country_code="999"):
     """Extrait les données de la feuille Contacts"""
     contacts_sim = []
     contacts_whatsapp = []
@@ -238,7 +284,7 @@ def process_contacts(df):
         type1 = "Téléphone" if source.upper() == "SIM" else "Vecteur de com"
 
         # Extraire et formater les numéros de téléphone
-        num1 = extract_phone_numbers(entries)
+        num1 = extract_phone_numbers(entries, country_code)
 
         # Créer le commentaire
         commentaire = f"Nom : {name if name and name != 'nan' else ''} Tel : {entries}"
@@ -264,27 +310,31 @@ def process_contacts(df):
     return contacts_sim, contacts_whatsapp
 
 
-def process_excel_file(file_path):
+def process_excel_file(file_path, country_code="999"):
     """Traite un fichier Excel et extrait les informations"""
     print(f"Processing {os.path.basename(file_path)}...")
 
     all_results = []
     all_contacts_sim = []
     all_contacts_whatsapp = []
+    all_imsi = []
 
     try:
         xls = pd.ExcelFile(file_path)
     except Exception as e:
         print(f"Error reading file {file_path}: {e}")
-        return all_results, all_contacts_sim, all_contacts_whatsapp
+        return all_results, all_contacts_sim, all_contacts_whatsapp, all_imsi
 
     # Traiter Device Info
     if DEVICE_INFO_SHEET in xls.sheet_names:
         try:
             df_device = pd.read_excel(xls, sheet_name=DEVICE_INFO_SHEET, header=1)  # header=1 car colonnes sur ligne 2
-            device_results = process_device_info(df_device)
+            device_results, imsi_list = process_device_info(df_device)
             all_results.extend(device_results)
+            all_imsi.extend(imsi_list)
             print(f"  - {len(device_results)} entrées trouvées dans {DEVICE_INFO_SHEET}")
+            if imsi_list:
+                print(f"  - {len(imsi_list)} IMSI trouvé(s)")
         except Exception as e:
             print(f"Error processing {DEVICE_INFO_SHEET}: {e}")
             import traceback
@@ -310,7 +360,7 @@ def process_excel_file(file_path):
     if CONTACTS_SHEET in xls.sheet_names:
         try:
             df_contacts = pd.read_excel(xls, sheet_name=CONTACTS_SHEET, header=1)  # header=1 car colonnes sur ligne 2
-            contacts_sim, contacts_whatsapp = process_contacts(df_contacts)
+            contacts_sim, contacts_whatsapp = process_contacts(df_contacts, country_code)
             all_contacts_sim.extend(contacts_sim)
             all_contacts_whatsapp.extend(contacts_whatsapp)
             print(f"  - {len(contacts_sim)} contacts SIM trouvés dans {CONTACTS_SHEET}")
@@ -322,7 +372,7 @@ def process_excel_file(file_path):
     else:
         print(f"  - Sheet '{CONTACTS_SHEET}' non trouvée")
 
-    return all_results, all_contacts_sim, all_contacts_whatsapp
+    return all_results, all_contacts_sim, all_contacts_whatsapp, all_imsi
 
 
 if __name__ == "__main__":
@@ -344,14 +394,54 @@ if __name__ == "__main__":
 
     print(f"\n{len(files)} fichier(s) trouvé(s)\n")
 
+    # Étape 1 : Scanner les fichiers pour détecter les IMSI
+    print("Recherche de l'indicatif pays...")
+    all_imsi_detected = []
+
+    for file_name in files:
+        file_path = os.path.join(INPUT_FOLDER, file_name)
+        try:
+            xls = pd.ExcelFile(file_path)
+            if DEVICE_INFO_SHEET in xls.sheet_names:
+                df_device = pd.read_excel(xls, sheet_name=DEVICE_INFO_SHEET, header=1)
+                _, imsi_list = process_device_info(df_device)
+                all_imsi_detected.extend(imsi_list)
+        except:
+            pass
+
+    # Déterminer le code pays
+    country_code = None
+    if all_imsi_detected:
+        # Prendre le premier IMSI et extraire le code pays
+        first_imsi = all_imsi_detected[0]
+        country_code = get_country_code_from_imsi(first_imsi)
+
+        if country_code:
+            print(f"✓ IMSI détecté : {first_imsi}")
+            print(f"✓ Code pays : +{country_code}\n")
+        else:
+            mcc = str(first_imsi)[:3]
+            print(f"⚠ IMSI détecté ({first_imsi}) mais MCC ({mcc}) non reconnu dans la base")
+
+    # Si pas de code pays détecté, demander à l'utilisateur
+    if not country_code:
+        print("Aucun IMSI détecté ou MCC non reconnu.")
+        country_code = input("Veuillez entrer l'indicatif pays (ex: 33 pour France, 1 pour USA) : ").strip()
+
+        if not country_code:
+            print("Aucun indicatif fourni, utilisation de 999 par défaut")
+            country_code = "999"
+        else:
+            print(f"✓ Utilisation de l'indicatif : +{country_code}\n")
+
+    # Étape 2 : Traiter tous les fichiers avec le code pays
     all_data = []
     all_contacts_sim = []
     all_contacts_whatsapp = []
 
-    # Traiter chaque fichier
     for file_name in files:
         file_path = os.path.join(INPUT_FOLDER, file_name)
-        results, contacts_sim, contacts_whatsapp = process_excel_file(file_path)
+        results, contacts_sim, contacts_whatsapp, _ = process_excel_file(file_path, country_code)
         all_data.extend(results)
         all_contacts_sim.extend(contacts_sim)
         all_contacts_whatsapp.extend(contacts_whatsapp)
