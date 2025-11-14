@@ -179,15 +179,17 @@ def extract_phone_numbers(entries_text, country_code="999"):
     # Nettoyer et formater les numéros
     formatted_numbers = []
     for num in matches:
-        # Nettoyer le numéro (retirer espaces, points, tirets)
-        clean_num = re.sub(r'[\s\.-]', '', num)
+        # Nettoyer le numéro (retirer espaces, points, tirets, et le +)
+        clean_num = re.sub(r'[\s\.\-\+]', '', num)
 
-        # Si le numéro commence déjà par +, le garder tel quel
-        if clean_num.startswith('+'):
+        # Si le numéro commence par un indicatif international (ex: 234), le garder tel quel
+        # Sinon, ajouter l'indicatif pays
+        if len(clean_num) > 10 and not clean_num.startswith('0'):
+            # Probablement déjà un numéro international
             formatted_numbers.append(clean_num)
         else:
-            # Ajouter l'indicatif pays
-            formatted_numbers.append(f"+{country_code}{clean_num}")
+            # Ajouter l'indicatif pays (sans le +)
+            formatted_numbers.append(f"{country_code}{clean_num}")
 
     # Joindre tous les numéros avec un espace
     return ' '.join(formatted_numbers)
