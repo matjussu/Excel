@@ -376,15 +376,22 @@ if __name__ == "__main__":
         output_file_name = f"{base_name}_CURE.xlsx"
         output_file = os.path.join(OUTPUT_FOLDER, output_file_name)
 
-        # Créer le fichier de sortie
+        # Créer le fichier de sortie (ne créer que les feuilles non vides)
         with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
-            df_output.to_excel(writer, sheet_name="Info_Perso", index=False)
-            df_contacts_sim.to_excel(writer, sheet_name="Feuil_Contacts", index=False)
-            df_contacts_whatsapp.to_excel(writer, sheet_name="Feuil_What'sapp", index=False)
+            if nb_info_apres > 0:
+                df_output.to_excel(writer, sheet_name="Info_Perso", index=False)
+            if nb_sim_apres > 0:
+                df_contacts_sim.to_excel(writer, sheet_name="Feuil_Contacts", index=False)
+            if nb_wa_apres > 0:
+                df_contacts_whatsapp.to_excel(writer, sheet_name="Feuil_What'sapp", index=False)
 
-        print(f"  ✓ Info_Perso : {nb_info_apres} entrées  # {nb_info_doublons} doublon(s) supprimé(s)")
-        print(f"  ✓ Feuil_Contacts : {nb_sim_apres} entrées  # {nb_sim_doublons} doublon(s) supprimé(s)")
-        print(f"  ✓ Feuil_What'sapp : {nb_wa_apres} entrées  # {nb_wa_doublons} doublon(s) supprimé(s)")
+        # Afficher les résultats (seulement pour les feuilles non vides)
+        if nb_info_apres > 0:
+            print(f"  ✓ Info_Perso : {nb_info_apres} entrées  # {nb_info_doublons} doublon(s) supprimé(s)")
+        if nb_sim_apres > 0:
+            print(f"  ✓ Feuil_Contacts : {nb_sim_apres} entrées  # {nb_sim_doublons} doublon(s) supprimé(s)")
+        if nb_wa_apres > 0:
+            print(f"  ✓ Feuil_What'sapp : {nb_wa_apres} entrées  # {nb_wa_doublons} doublon(s) supprimé(s)")
         print(f"  ✓ Fichier créé : {output_file_name}")
 
     print("\n" + "=" * 60)
