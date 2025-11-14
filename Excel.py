@@ -298,6 +298,10 @@ def process_call_log(df, country_code="999"):
         # Formater le numéro de téléphone
         num1 = extract_phone_numbers(parties, country_code)
 
+        # DEBUG : Afficher les premières valeurs pour comprendre
+        if idx < 3:  # Seulement les 3 premières lignes
+            print(f"      [DEBUG ligne {idx}] parties='{parties}' | direction='{direction}' | direction_value='{direction_value}'")
+
         call_log_entry = {
             "Parties": parties,
             "Direction": direction_value,
