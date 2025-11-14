@@ -459,6 +459,14 @@ if __name__ == "__main__":
         df_call_log = pd.DataFrame(call_log, columns=CALL_LOG_COLUMNS)
         nb_call_avant = len(df_call_log)
 
+        # DEBUG : Afficher le premier élément de la liste
+        if len(call_log) > 0:
+            print(f"  [DEBUG Premier élément de call_log]")
+            print(f"    Type: {type(call_log[0])}")
+            print(f"    Clés: {call_log[0].keys() if isinstance(call_log[0], dict) else 'N/A'}")
+            print(f"    Parties: '{call_log[0].get('Parties', 'KEY NOT FOUND')}'")
+            print(f"    Direction: '{call_log[0].get('Direction', 'KEY NOT FOUND')}'")
+
         # DEBUG : Afficher les premières lignes du DataFrame
         if nb_call_avant > 0:
             print(f"  [DEBUG DataFrame Call log - 3 premières lignes]")
