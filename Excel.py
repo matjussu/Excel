@@ -11,10 +11,12 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 DEVICE_INFO_SHEET = "Device Info"
 USER_ACCOUNTS_SHEET = "User Accounts"
 CONTACTS_SHEET = "Contacts"
+CALL_LOG_SHEET = "Call log"
 
 # Colonnes de sortie
 OUTPUT_COLUMNS = ["MDC", "Types", "Numéro associé", "Name"]
 CONTACTS_COLUMNS = ["Name", "Entries", "Num1", "Type1", "relation", "Num2", "Type2", "commentaire"]
+CALL_LOG_COLUMNS = ["Parties", "Direction", "Num1", "Type", "Relation", "Num2", "Durée", "Dates", "Heure"]
 
 # Mapping MCC (Mobile Country Code) vers indicatif téléphonique
 MCC_TO_COUNTRY_CODE = {
@@ -246,18 +248,75 @@ def process_contacts(df, country_code="999"):
     return contacts_sim, contacts_whatsapp
 
 
+def process_call_log(df, country_code="999"):
+    """Extrait les données de la feuille Call log"""
+    call_log_entries = []
+
+    if df.empty:
+        return call_log_entries
+
+    columns_lower = {str(col).strip().lower(): col for col in df.columns}
+
+    parties_col = columns_lower.get("parties")
+    date_col = columns_lower.get("date")
+    time_col = columns_lower.get("time")
+    duration_col = columns_lower.get("duration")
+    direction_col = columns_lower.get("direction")
+    source_col = columns_lower.get("source")
+
+    if not parties_col:
+        return call_log_entries
+
+    for idx, row in df.iterrows():
+        parties = str(row[parties_col]).strip() if parties_col and not pd.isna(row[parties_col]) else ""
+        date = str(row[date_col]).strip() if date_col and not pd.isna(row[date_col]) else ""
+        time = str(row[time_col]).strip() if time_col and not pd.isna(row[time_col]) else ""
+        duration = str(row[duration_col]).strip() if duration_col and not pd.isna(row[duration_col]) else ""
+        direction = str(row[direction_col]).strip() if direction_col and not pd.isna(row[direction_col]) else ""
+        source = str(row[source_col]).strip() if source_col and not pd.isna(row[source_col]) else ""
+
+        if not parties or parties == "nan":
+            continue
+
+        # Convertir Direction : Outgoing = 1, autre = 2
+        direction_value = "1" if direction.upper() == "OUTGOING" else "2"
+
+        # Déterminer la relation selon la direction
+        relation = "a appelé" if direction_value == "1" else "a reçu l'appel"
+
+        # Formater le numéro de téléphone
+        num1 = extract_phone_numbers(parties, country_code)
+
+        call_log_entry = {
+            "Parties": parties,
+            "Direction": direction_value,
+            "Num1": num1,
+            "Type": "Téléphone",
+            "Relation": relation,
+            "Num2": "",
+            "Durée": duration if duration and duration != "nan" else "",
+            "Dates": date if date and date != "nan" else "",
+            "Heure": time if time and time != "nan" else ""
+        }
+
+        call_log_entries.append(call_log_entry)
+
+    return call_log_entries
+
+
 def process_excel_file(file_path, country_code="999"):
     """Traite un fichier Excel et extrait les informations"""
     all_results = []
     all_contacts_sim = []
     all_contacts_whatsapp = []
+    all_call_log = []
     all_imsi = []
 
     try:
         xls = pd.ExcelFile(file_path)
     except Exception as e:
         print(f"  ✗ Erreur de lecture : {e}")
-        return all_results, all_contacts_sim, all_contacts_whatsapp, all_imsi
+        return all_results, all_contacts_sim, all_contacts_whatsapp, all_call_log, all_imsi
 
     # Traiter Device Info
     if DEVICE_INFO_SHEET in xls.sheet_names:
@@ -288,7 +347,16 @@ def process_excel_file(file_path, country_code="999"):
         except Exception as e:
             print(f"  ✗ Erreur Contacts : {e}")
 
-    return all_results, all_contacts_sim, all_contacts_whatsapp, all_imsi
+    # Traiter Call log
+    if CALL_LOG_SHEET in xls.sheet_names:
+        try:
+            df_call_log = pd.read_excel(xls, sheet_name=CALL_LOG_SHEET, header=1)
+            call_log_entries = process_call_log(df_call_log, country_code)
+            all_call_log.extend(call_log_entries)
+        except Exception as e:
+            print(f"  ✗ Erreur Call log : {e}")
+
+    return all_results, all_contacts_sim, all_contacts_whatsapp, all_call_log, all_imsi
 
 
 if __name__ == "__main__":
@@ -350,7 +418,7 @@ if __name__ == "__main__":
                 print(f"  ✓ Utilisation de l'indicatif : +{country_code}")
 
         # Étape 2 : Traiter le fichier
-        results, contacts_sim, contacts_whatsapp, _ = process_excel_file(file_path, country_code)
+        results, contacts_sim, contacts_whatsapp, call_log, _ = process_excel_file(file_path, country_code)
 
         # Créer les DataFrames et compter les doublons
         df_output = pd.DataFrame(results, columns=OUTPUT_COLUMNS)
@@ -371,6 +439,12 @@ if __name__ == "__main__":
         nb_wa_apres = len(df_contacts_whatsapp)
         nb_wa_doublons = nb_wa_avant - nb_wa_apres
 
+        df_call_log = pd.DataFrame(call_log, columns=CALL_LOG_COLUMNS)
+        nb_call_avant = len(df_call_log)
+        df_call_log = df_call_log.drop_duplicates()
+        nb_call_apres = len(df_call_log)
+        nb_call_doublons = nb_call_avant - nb_call_apres
+
         # Générer le nom du fichier de sortie
         base_name = os.path.splitext(file_name)[0]
         output_file_name = f"{base_name}_CURE.xlsx"
@@ -384,6 +458,8 @@ if __name__ == "__main__":
                 df_contacts_sim.to_excel(writer, sheet_name="Feuil_Contacts", index=False)
             if nb_wa_apres > 0:
                 df_contacts_whatsapp.to_excel(writer, sheet_name="Feuil_What'sapp", index=False)
+            if nb_call_apres > 0:
+                df_call_log.to_excel(writer, sheet_name="Feuil_Call", index=False)
 
         # Afficher les résultats (seulement pour les feuilles non vides)
         if nb_info_apres > 0:
@@ -392,6 +468,8 @@ if __name__ == "__main__":
             print(f"  ✓ Feuil_Contacts : {nb_sim_apres} entrées  # {nb_sim_doublons} doublon(s) supprimé(s)")
         if nb_wa_apres > 0:
             print(f"  ✓ Feuil_What'sapp : {nb_wa_apres} entrées  # {nb_wa_doublons} doublon(s) supprimé(s)")
+        if nb_call_apres > 0:
+            print(f"  ✓ Feuil_Call : {nb_call_apres} entrées  # {nb_call_doublons} doublon(s) supprimé(s)")
         print(f"  ✓ Fichier créé : {output_file_name}")
 
     print("\n" + "=" * 60)
