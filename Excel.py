@@ -255,11 +255,7 @@ def process_call_log(df, country_code="999"):
     if df.empty:
         return call_log_entries
 
-    print(f"    [DEBUG Call log] Colonnes disponibles : {list(df.columns)}")
-
     columns_lower = {str(col).strip().lower(): col for col in df.columns}
-
-    print(f"    [DEBUG Call log] Clés en minuscules : {list(columns_lower.keys())}")
 
     parties_col = columns_lower.get("parties")
     date_col = columns_lower.get("date")
@@ -272,18 +268,29 @@ def process_call_log(df, country_code="999"):
         return call_log_entries
 
     for idx, row in df.iterrows():
-        parties = str(row[parties_col]).strip() if parties_col and not pd.isna(row[parties_col]) else ""
-        date = str(row[date_col]).strip() if date_col and not pd.isna(row[date_col]) else ""
-        time = str(row[time_col]).strip() if time_col and not pd.isna(row[time_col]) else ""
-        duration = str(row[duration_col]).strip() if duration_col and not pd.isna(row[duration_col]) else ""
-        direction = str(row[direction_col]).strip() if direction_col and not pd.isna(row[direction_col]) else ""
-        source = str(row[source_col]).strip() if source_col and not pd.isna(row[source_col]) else ""
+        # Récupérer les valeurs brutes
+        parties_raw = row[parties_col] if parties_col and not pd.isna(row[parties_col]) else ""
+        date_raw = row[date_col] if date_col and not pd.isna(row[date_col]) else ""
+        time_raw = row[time_col] if time_col and not pd.isna(row[time_col]) else ""
+        duration_raw = row[duration_col] if duration_col and not pd.isna(row[duration_col]) else ""
+        direction_raw = row[direction_col] if direction_col and not pd.isna(row[direction_col]) else ""
 
-        if not parties or parties == "nan":
+        # Convertir en string et nettoyer
+        parties = str(parties_raw).strip()
+        date = str(date_raw).strip()
+        time = str(time_raw).strip()
+        duration = str(duration_raw).strip()
+        direction = str(direction_raw).strip()
+
+        # Ignorer les lignes vides ou avec "nan"
+        if not parties or parties == "nan" or parties == "":
             continue
 
         # Convertir Direction : Outgoing = 1, autre = 2
-        direction_value = "1" if direction.upper() == "OUTGOING" else "2"
+        if direction and direction != "nan" and direction != "":
+            direction_value = "1" if direction.upper() == "OUTGOING" else "2"
+        else:
+            direction_value = "2"  # Par défaut
 
         # Déterminer la relation selon la direction
         relation = "a appelé" if direction_value == "1" else "a reçu l'appel"
@@ -294,7 +301,7 @@ def process_call_log(df, country_code="999"):
         call_log_entry = {
             "Parties": parties,
             "Direction": direction_value,
-            "Num1": num1,
+            "Num1": num1 if num1 else parties,  # Si extraction échoue, garder parties
             "Type": "Téléphone",
             "Relation": relation,
             "Num2": "",
