@@ -458,6 +458,12 @@ if __name__ == "__main__":
 
         df_call_log = pd.DataFrame(call_log, columns=CALL_LOG_COLUMNS)
         nb_call_avant = len(df_call_log)
+
+        # DEBUG : Afficher les premières lignes du DataFrame
+        if nb_call_avant > 0:
+            print(f"  [DEBUG DataFrame Call log - 3 premières lignes]")
+            print(df_call_log[["Parties", "Direction", "Num1"]].head(3))
+
         df_call_log = df_call_log.drop_duplicates()
         nb_call_apres = len(df_call_log)
         nb_call_doublons = nb_call_avant - nb_call_apres
