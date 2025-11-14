@@ -308,59 +308,68 @@ if __name__ == "__main__":
 
     print(f"\n{len(files)} fichier(s) détecté(s)\n")
 
-    # Étape 1 : Scanner pour détecter l'IMSI
-    print("→ Recherche de l'indicatif pays...")
-    all_imsi_detected = []
-
-    for file_name in files:
-        file_path = os.path.join(INPUT_FOLDER, file_name)
-        try:
-            xls = pd.ExcelFile(file_path)
-            if DEVICE_INFO_SHEET in xls.sheet_names:
-                df_device = pd.read_excel(xls, sheet_name=DEVICE_INFO_SHEET, header=1)
-                _, imsi_list = process_device_info(df_device)
-                all_imsi_detected.extend(imsi_list)
-        except:
-            pass
-
-    # Déterminer le code pays
-    country_code = None
-    if all_imsi_detected:
-        first_imsi = all_imsi_detected[0]
-        country_code = get_country_code_from_imsi(first_imsi)
-
-        if country_code:
-            print(f"  ✓ IMSI détecté → Code pays : +{country_code}")
-        else:
-            mcc = str(first_imsi)[:3]
-            print(f"  ⚠ IMSI détecté mais MCC ({mcc}) non reconnu")
-
-    if not country_code:
-        print("  ⚠ Aucun IMSI détecté")
-        country_code = input("\n→ Entrez l'indicatif pays (ex: 33 pour France) : ").strip()
-
-        if not country_code:
-            print("  → Utilisation de l'indicatif par défaut : 999")
-            country_code = "999"
-        else:
-            print(f"  ✓ Utilisation de l'indicatif : +{country_code}")
-
-    print("\n" + "-" * 60)
+    print("-" * 60)
     print("Traitement des fichiers...")
     print("-" * 60)
 
-    # Étape 2 : Traiter chaque fichier individuellement
+    # Traiter chaque fichier individuellement
     for file_name in files:
         file_path = os.path.join(INPUT_FOLDER, file_name)
 
         print(f"\n→ {file_name}")
 
+        # Étape 1 : Détecter l'IMSI pour ce fichier
+        country_code = None
+        try:
+            xls = pd.ExcelFile(file_path)
+            if DEVICE_INFO_SHEET in xls.sheet_names:
+                df_device = pd.read_excel(xls, sheet_name=DEVICE_INFO_SHEET, header=1)
+                _, imsi_list = process_device_info(df_device)
+
+                if imsi_list:
+                    first_imsi = imsi_list[0]
+                    country_code = get_country_code_from_imsi(first_imsi)
+
+                    if country_code:
+                        print(f"  ✓ IMSI détecté → Code pays : +{country_code}")
+                    else:
+                        mcc = str(first_imsi)[:3]
+                        print(f"  ⚠ IMSI détecté mais MCC ({mcc}) non reconnu")
+        except:
+            pass
+
+        # Si pas de code pays détecté, demander à l'utilisateur
+        if not country_code:
+            print("  ⚠ Aucun IMSI détecté pour ce fichier")
+            country_code = input(f"  → Entrez l'indicatif pays pour '{file_name}' (ex: 33 pour France, Entrée pour 999) : ").strip()
+
+            if not country_code:
+                print("  → Utilisation de l'indicatif par défaut : 999")
+                country_code = "999"
+            else:
+                print(f"  ✓ Utilisation de l'indicatif : +{country_code}")
+
+        # Étape 2 : Traiter le fichier
         results, contacts_sim, contacts_whatsapp, _ = process_excel_file(file_path, country_code)
 
-        # Créer les DataFrames
-        df_output = pd.DataFrame(results, columns=OUTPUT_COLUMNS).drop_duplicates()
-        df_contacts_sim = pd.DataFrame(contacts_sim, columns=CONTACTS_COLUMNS).drop_duplicates()
-        df_contacts_whatsapp = pd.DataFrame(contacts_whatsapp, columns=CONTACTS_COLUMNS).drop_duplicates()
+        # Créer les DataFrames et compter les doublons
+        df_output = pd.DataFrame(results, columns=OUTPUT_COLUMNS)
+        nb_info_avant = len(df_output)
+        df_output = df_output.drop_duplicates()
+        nb_info_apres = len(df_output)
+        nb_info_doublons = nb_info_avant - nb_info_apres
+
+        df_contacts_sim = pd.DataFrame(contacts_sim, columns=CONTACTS_COLUMNS)
+        nb_sim_avant = len(df_contacts_sim)
+        df_contacts_sim = df_contacts_sim.drop_duplicates()
+        nb_sim_apres = len(df_contacts_sim)
+        nb_sim_doublons = nb_sim_avant - nb_sim_apres
+
+        df_contacts_whatsapp = pd.DataFrame(contacts_whatsapp, columns=CONTACTS_COLUMNS)
+        nb_wa_avant = len(df_contacts_whatsapp)
+        df_contacts_whatsapp = df_contacts_whatsapp.drop_duplicates()
+        nb_wa_apres = len(df_contacts_whatsapp)
+        nb_wa_doublons = nb_wa_avant - nb_wa_apres
 
         # Générer le nom du fichier de sortie
         base_name = os.path.splitext(file_name)[0]
@@ -373,9 +382,9 @@ if __name__ == "__main__":
             df_contacts_sim.to_excel(writer, sheet_name="Feuil_Contacts", index=False)
             df_contacts_whatsapp.to_excel(writer, sheet_name="Feuil_What'sapp", index=False)
 
-        print(f"  ✓ Info_Perso : {len(df_output)} entrées")
-        print(f"  ✓ Feuil_Contacts : {len(df_contacts_sim)} entrées")
-        print(f"  ✓ Feuil_What'sapp : {len(df_contacts_whatsapp)} entrées")
+        print(f"  ✓ Info_Perso : {nb_info_apres} entrées  # {nb_info_doublons} doublon(s) supprimé(s)")
+        print(f"  ✓ Feuil_Contacts : {nb_sim_apres} entrées  # {nb_sim_doublons} doublon(s) supprimé(s)")
+        print(f"  ✓ Feuil_What'sapp : {nb_wa_apres} entrées  # {nb_wa_doublons} doublon(s) supprimé(s)")
         print(f"  ✓ Fichier créé : {output_file_name}")
 
     print("\n" + "=" * 60)
