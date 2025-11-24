@@ -259,33 +259,56 @@ def process_call_log(df, country_code="999"):
     # Créer le mapping des colonnes (case-insensitive et trimmed)
     columns_lower = {str(col).strip().lower(): col for col in df.columns}
 
-    # Debug : afficher le mapping
-    print(f"    → Mapping des colonnes créé : {len(columns_lower)} colonne(s)")
-    for k, v in list(columns_lower.items())[:5]:  # Afficher les 5 premières
-        print(f"       '{k}' → '{v}' (len={len(k)}, repr={repr(k)})")
+    # Debug : afficher TOUTES les colonnes
+    print(f"    → Colonnes disponibles ({len(columns_lower)}) : {list(columns_lower.keys())}")
 
-    # Rechercher la colonne Parties avec plus de flexibilité
+    # Rechercher les colonnes avec flexibilité
     parties_col = None
-    for key, col in columns_lower.items():
-        print(f"    → Test colonne: key='{key}', 'parties' in key = {'parties' in key}")
-        if "parties" in key or "party" in key or "partie" in key:
-            parties_col = col
-            print(f"    ✓ Colonne Parties trouvée ! key='{key}' → col='{col}'")
-            break
+    date_col = None
+    time_col = None
+    duration_col = None
+    direction_col = None
+    source_col = None
 
-    date_col = columns_lower.get("date")
-    time_col = columns_lower.get("time")
-    duration_col = columns_lower.get("duration")
-    direction_col = columns_lower.get("direction")
-    source_col = columns_lower.get("source")
+    for key, col in columns_lower.items():
+        if not parties_col and ("parties" in key or "party" in key or "partie" in key):
+            parties_col = col
+            print(f"    ✓ Colonne Parties trouvée : '{key}' → '{col}'")
+
+        if not date_col and "date" in key:
+            date_col = col
+            print(f"    ✓ Colonne Date trouvée : '{key}' → '{col}'")
+
+        if not time_col and "time" in key:
+            time_col = col
+            print(f"    ✓ Colonne Time trouvée : '{key}' → '{col}'")
+
+        if not duration_col and ("duration" in key or "durée" in key or "duree" in key):
+            duration_col = col
+            print(f"    ✓ Colonne Duration trouvée : '{key}' → '{col}'")
+
+        if not direction_col and "direction" in key:
+            direction_col = col
+            print(f"    ✓ Colonne Direction trouvée : '{key}' → '{col}'")
+
+        if not source_col and "source" in key:
+            source_col = col
+            print(f"    ✓ Colonne Source trouvée : '{key}' → '{col}'")
 
     # Vérifier que la colonne Parties existe
     if not parties_col:
         print(f"    ✗ Colonne 'Parties' introuvable dans Call log")
-        print(f"    Colonnes disponibles: {list(df.columns)}")
-        print(f"    Colonnes (lowercase): {list(columns_lower.keys())}")
-        print(f"    Dict complet: {columns_lower}")
         return call_log_entries
+
+    # Avertir si des colonnes importantes manquent
+    if not date_col:
+        print(f"    ⚠ Colonne 'Date' non trouvée")
+    if not time_col:
+        print(f"    ⚠ Colonne 'Time' non trouvée")
+    if not duration_col:
+        print(f"    ⚠ Colonne 'Duration' non trouvée")
+    if not direction_col:
+        print(f"    ⚠ Colonne 'Direction' non trouvée")
 
     # Afficher un aperçu des premières données
     print(f"    → Call log: {len(df)} lignes détectées")
