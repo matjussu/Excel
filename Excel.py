@@ -248,6 +248,32 @@ def process_contacts(df, country_code="999"):
     return contacts_sim, contacts_whatsapp
 
 
+def convert_duration_to_seconds(duration_str):
+    """Convertit une durée au format HH:MM:SS en secondes"""
+    if not duration_str or duration_str == "nan" or duration_str == "":
+        return ""
+
+    try:
+        # Format HH:MM:SS
+        if ":" in str(duration_str):
+            parts = str(duration_str).split(":")
+            if len(parts) == 3:
+                hours = int(parts[0])
+                minutes = int(parts[1])
+                seconds = int(parts[2])
+                total_seconds = hours * 3600 + minutes * 60 + seconds
+                return str(total_seconds)
+            elif len(parts) == 2:
+                minutes = int(parts[0])
+                seconds = int(parts[1])
+                total_seconds = minutes * 60 + seconds
+                return str(total_seconds)
+        # Si c'est déjà un nombre
+        return str(duration_str)
+    except:
+        return str(duration_str)
+
+
 def process_call_log(df, country_code="999"):
     """Extrait les données de la feuille Call log"""
     call_log_entries = []
@@ -273,27 +299,27 @@ def process_call_log(df, country_code="999"):
     for key, col in columns_lower.items():
         if not parties_col and ("parties" in key or "party" in key or "partie" in key):
             parties_col = col
-            print(f"    ✓ Colonne Parties trouvée : '{key}' → '{col}'")
+            print(f"    ✓ Colonne Parties trouvée : key='{key}' → col='{col}'")
 
         if not date_col and "date" in key:
             date_col = col
-            print(f"    ✓ Colonne Date trouvée : '{key}' → '{col}'")
+            print(f"    ✓ Colonne Date trouvée : key='{key}' → col='{col}'")
 
         if not time_col and "time" in key:
             time_col = col
-            print(f"    ✓ Colonne Time trouvée : '{key}' → '{col}'")
+            print(f"    ✓ Colonne Time trouvée : key='{key}' → col='{col}'")
 
         if not duration_col and ("duration" in key or "durée" in key or "duree" in key):
             duration_col = col
-            print(f"    ✓ Colonne Duration trouvée : '{key}' → '{col}'")
+            print(f"    ✓ Colonne Duration trouvée : key='{key}' → col='{col}'")
 
         if not direction_col and "direction" in key:
             direction_col = col
-            print(f"    ✓ Colonne Direction trouvée : '{key}' → '{col}'")
+            print(f"    ✓ Colonne Direction trouvée : key='{key}' → col='{col}'")
 
         if not source_col and "source" in key:
             source_col = col
-            print(f"    ✓ Colonne Source trouvée : '{key}' → '{col}'")
+            print(f"    ✓ Colonne Source trouvée : key='{key}' → col='{col}'")
 
     # Vérifier que la colonne Parties existe
     if not parties_col:
@@ -312,14 +338,16 @@ def process_call_log(df, country_code="999"):
 
     # Afficher un aperçu des premières données
     print(f"    → Call log: {len(df)} lignes détectées")
-    preview_count = min(3, len(df))
+    preview_count = min(2, len(df))
     if preview_count > 0:
-        print(f"    Aperçu des {preview_count} première(s) ligne(s) - Colonne Parties:")
+        print(f"    Aperçu des {preview_count} première(s) ligne(s) :")
         for i in range(preview_count):
-            val = df.iloc[i][parties_col]
-            is_empty = pd.isna(val) or str(val).strip() == "" or str(val).strip() == "nan"
-            status = "✗ VIDE" if is_empty else "✓"
-            print(f"      [{i+1}] {status} {repr(val)}")
+            print(f"      Ligne [{i+1}]:")
+            print(f"        Parties: {repr(df.iloc[i][parties_col]) if parties_col else 'N/A'}")
+            print(f"        Date: {repr(df.iloc[i][date_col]) if date_col else 'N/A'}")
+            print(f"        Time: {repr(df.iloc[i][time_col]) if time_col else 'N/A'}")
+            print(f"        Duration: {repr(df.iloc[i][duration_col]) if duration_col else 'N/A'}")
+            print(f"        Direction: {repr(df.iloc[i][direction_col]) if direction_col else 'N/A'}")
 
     lignes_valides = 0
     lignes_ignorees = 0
@@ -346,6 +374,24 @@ def process_call_log(df, country_code="999"):
 
         lignes_valides += 1
 
+        # Debug : afficher les valeurs brutes pour la première ligne
+        if lignes_valides == 1:
+            print(f"\n    DEBUG - Première ligne valide :")
+            print(f"      parties_raw = {repr(parties_raw)}")
+            print(f"      date_raw = {repr(date_raw)}")
+            print(f"      time_raw = {repr(time_raw)}")
+            print(f"      duration_raw = {repr(duration_raw)}")
+            print(f"      direction_raw = {repr(direction_raw)}")
+            print(f"      Après conversion string :")
+            print(f"      parties = {repr(parties)}")
+            print(f"      date = {repr(date)}")
+            print(f"      time = {repr(time)}")
+            print(f"      duration = {repr(duration)}")
+            print(f"      direction = {repr(direction)}\n")
+
+        # Convertir Duration en secondes
+        duration_seconds = convert_duration_to_seconds(duration)
+
         # Convertir Direction : Outgoing = 1, autre = 2
         if direction and direction != "nan" and direction != "":
             direction_value = "1" if direction.upper() == "OUTGOING" else "2"
@@ -366,7 +412,7 @@ def process_call_log(df, country_code="999"):
             "Type": "Téléphone",
             "Relation": relation,
             "Num2": "",
-            "Durée": duration if duration and duration != "nan" else "",
+            "Durée": duration_seconds,
             "Dates": date if date and date != "nan" else "",
             "Heure": time if time and time != "nan" else ""
         }
