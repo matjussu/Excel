@@ -174,7 +174,8 @@ def extract_phone_numbers(entries_text, country_code="999"):
     if not entries_text or entries_text == "nan":
         return ""
 
-    pattern = r'(?:Phone-General:\s*)?(\+?\d[\d\s\.-]+)'
+    # Accepter Phone-General, Phone-Mobile, ou n'importe quel numéro
+    pattern = r'(?:(?:Phone-General|Phone-Mobile):\s*)?(\+?\d[\d\s\.-]+)'
     matches = re.findall(pattern, entries_text, re.IGNORECASE)
 
     if not matches:
