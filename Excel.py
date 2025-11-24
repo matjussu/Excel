@@ -253,8 +253,10 @@ def process_call_log(df, country_code="999"):
     call_log_entries = []
 
     if df.empty:
+        print("    ⚠ Call log vide (0 lignes)")
         return call_log_entries
 
+    # Créer le mapping des colonnes (case-insensitive)
     columns_lower = {str(col).strip().lower(): col for col in df.columns}
 
     parties_col = columns_lower.get("parties")
@@ -264,11 +266,28 @@ def process_call_log(df, country_code="999"):
     direction_col = columns_lower.get("direction")
     source_col = columns_lower.get("source")
 
+    # Vérifier que la colonne Parties existe
     if not parties_col:
+        print(f"    ✗ Colonne 'Parties' introuvable dans Call log")
+        print(f"    Colonnes disponibles: {', '.join(df.columns)}")
         return call_log_entries
 
+    # Afficher un aperçu des premières données
+    print(f"    → Call log: {len(df)} lignes détectées")
+    preview_count = min(3, len(df))
+    if preview_count > 0:
+        print(f"    Aperçu des {preview_count} première(s) ligne(s) - Colonne Parties:")
+        for i in range(preview_count):
+            val = df.iloc[i][parties_col]
+            is_empty = pd.isna(val) or str(val).strip() == "" or str(val).strip() == "nan"
+            status = "✗ VIDE" if is_empty else "✓"
+            print(f"      [{i+1}] {status} {repr(val)}")
+
+    lignes_valides = 0
+    lignes_ignorees = 0
+
     for idx, row in df.iterrows():
-        # Récupérer les valeurs brutes
+        # Récupérer les valeurs brutes avec vérification pd.isna()
         parties_raw = row[parties_col] if parties_col and not pd.isna(row[parties_col]) else ""
         date_raw = row[date_col] if date_col and not pd.isna(row[date_col]) else ""
         time_raw = row[time_col] if time_col and not pd.isna(row[time_col]) else ""
@@ -282,9 +301,12 @@ def process_call_log(df, country_code="999"):
         duration = str(duration_raw).strip()
         direction = str(direction_raw).strip()
 
-        # Ignorer les lignes vides ou avec "nan"
+        # Ignorer les lignes sans valeur Parties valide
         if not parties or parties == "nan" or parties == "":
+            lignes_ignorees += 1
             continue
+
+        lignes_valides += 1
 
         # Convertir Direction : Outgoing = 1, autre = 2
         if direction and direction != "nan" and direction != "":
@@ -298,19 +320,26 @@ def process_call_log(df, country_code="999"):
         # Formater le numéro de téléphone
         num1 = extract_phone_numbers(parties, country_code)
 
-        # Créer l'entrée (ATTENTION : les clés doivent correspondre EXACTEMENT à CALL_LOG_COLUMNS)
-        call_log_entry = {}
-        call_log_entry["Parties"] = parties
-        call_log_entry["Direction"] = direction_value
-        call_log_entry["Num1"] = num1 if num1 else parties
-        call_log_entry["Type"] = "Téléphone"
-        call_log_entry["Relation"] = relation
-        call_log_entry["Num2"] = ""
-        call_log_entry["Durée"] = duration if duration and duration != "nan" else ""
-        call_log_entry["Dates"] = date if date and date != "nan" else ""
-        call_log_entry["Heure"] = time if time and time != "nan" else ""
+        # Créer l'entrée avec clés exactement comme dans CALL_LOG_COLUMNS
+        call_log_entry = {
+            "Parties": parties,
+            "Direction": direction_value,
+            "Num1": num1 if num1 else parties,
+            "Type": "Téléphone",
+            "Relation": relation,
+            "Num2": "",
+            "Durée": duration if duration and duration != "nan" else "",
+            "Dates": date if date and date != "nan" else "",
+            "Heure": time if time and time != "nan" else ""
+        }
 
         call_log_entries.append(call_log_entry)
+
+    # Résumé du traitement
+    if lignes_valides == 0:
+        print(f"    ⚠ Aucune donnée valide trouvée ({lignes_ignorees} lignes ignorées car Parties vide)")
+    else:
+        print(f"    ✓ {lignes_valides} entrée(s) valide(s) extraite(s) ({lignes_ignorees} ignorée(s))")
 
     return call_log_entries
 
