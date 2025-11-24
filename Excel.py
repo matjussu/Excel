@@ -11,7 +11,7 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 DEVICE_INFO_SHEET = "Device Info"
 USER_ACCOUNTS_SHEET = "User Accounts"
 CONTACTS_SHEET = "Contacts"
-CALL_LOG_SHEET = "Call log"
+CALL_LOG_SHEET = "Call Log"
 
 # Colonnes de sortie
 OUTPUT_COLUMNS = ["MDC", "Types", "Numéro associé", "Name"]
