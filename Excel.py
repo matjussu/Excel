@@ -259,11 +259,18 @@ def process_call_log(df, country_code="999"):
     # Créer le mapping des colonnes (case-insensitive et trimmed)
     columns_lower = {str(col).strip().lower(): col for col in df.columns}
 
+    # Debug : afficher le mapping
+    print(f"    → Mapping des colonnes créé : {len(columns_lower)} colonne(s)")
+    for k, v in list(columns_lower.items())[:5]:  # Afficher les 5 premières
+        print(f"       '{k}' → '{v}' (len={len(k)}, repr={repr(k)})")
+
     # Rechercher la colonne Parties avec plus de flexibilité
     parties_col = None
     for key, col in columns_lower.items():
+        print(f"    → Test colonne: key='{key}', 'parties' in key = {'parties' in key}")
         if "parties" in key or "party" in key or "partie" in key:
             parties_col = col
+            print(f"    ✓ Colonne Parties trouvée ! key='{key}' → col='{col}'")
             break
 
     date_col = columns_lower.get("date")
@@ -277,6 +284,7 @@ def process_call_log(df, country_code="999"):
         print(f"    ✗ Colonne 'Parties' introuvable dans Call log")
         print(f"    Colonnes disponibles: {list(df.columns)}")
         print(f"    Colonnes (lowercase): {list(columns_lower.keys())}")
+        print(f"    Dict complet: {columns_lower}")
         return call_log_entries
 
     # Afficher un aperçu des premières données
@@ -508,18 +516,28 @@ if __name__ == "__main__":
         output_file = os.path.join(OUTPUT_FOLDER, output_file_name)
 
         # Créer le fichier de sortie
+        print(f"\n  → Création du fichier Excel : {output_file_name}")
+        print(f"     nb_call_apres = {nb_call_apres}")
+
         with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
             if nb_info_apres > 0:
                 df_output.to_excel(writer, sheet_name="Info_Perso", index=False)
+                print(f"     ✓ Feuille Info_Perso créée")
             if nb_sim_apres > 0:
                 df_contacts_sim.to_excel(writer, sheet_name="Feuil_Contacts", index=False)
+                print(f"     ✓ Feuille Feuil_Contacts créée")
             if nb_wa_apres > 0:
                 df_contacts_whatsapp.to_excel(writer, sheet_name="Feuil_What'sapp", index=False)
+                print(f"     ✓ Feuille Feuil_What'sapp créée")
 
             # Toujours créer la feuille Feuil_Call, même si vide
+            print(f"     → Tentative de création de Feuil_Call...")
             if nb_call_apres > 0:
+                print(f"     → Création avec {nb_call_apres} entrées")
                 df_call_log.to_excel(writer, sheet_name="Feuil_Call", index=False)
+                print(f"     ✓ Feuille Feuil_Call créée avec données")
             else:
+                print(f"     → Création avec message d'erreur (0 entrées)")
                 # Créer une feuille vide avec un message d'erreur
                 df_empty_call = pd.DataFrame({
                     "Message": ["Aucune donnée Call Log trouvée. Vérifiez que :"],
@@ -528,6 +546,7 @@ if __name__ == "__main__":
                     "Info3": ["3. Le format du fichier est correct (header à la ligne 1 ou 0)"]
                 })
                 df_empty_call.to_excel(writer, sheet_name="Feuil_Call", index=False)
+                print(f"     ✓ Feuille Feuil_Call créée avec message d'erreur")
 
         # Afficher les résultats (seulement pour les feuilles non vides)
         if nb_info_apres > 0:
