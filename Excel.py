@@ -255,7 +255,16 @@ def convert_duration_to_seconds(duration_str):
         return ""
 
     try:
-        # Format HH:MM:SS
+        # Si c'est un objet datetime.time (créé par pandas)
+        if hasattr(duration_str, 'hour') and hasattr(duration_str, 'minute') and hasattr(duration_str, 'second'):
+            total_seconds = duration_str.hour * 3600 + duration_str.minute * 60 + duration_str.second
+            return str(total_seconds)
+
+        # Si c'est un timedelta
+        if hasattr(duration_str, 'total_seconds'):
+            return str(int(duration_str.total_seconds()))
+
+        # Format HH:MM:SS en string
         if ":" in str(duration_str):
             parts = str(duration_str).split(":")
             if len(parts) == 3:
@@ -269,6 +278,7 @@ def convert_duration_to_seconds(duration_str):
                 seconds = int(parts[1])
                 total_seconds = minutes * 60 + seconds
                 return str(total_seconds)
+
         # Si c'est déjà un nombre
         return str(duration_str)
     except:
