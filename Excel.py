@@ -79,10 +79,17 @@ def process_device_info(df):
         "IMEI": {"Entité": "Moyen de com", "Types": "IMEI"},
         "IMSI": {"Entité": "Moyen de com", "Types": "IMSI"},
         "Advertising ID": {"Entité ": "Vecteur de com", "Types": "Advertising ID"},
-        "Mac Address": {"Entité": "IOC", "Types": "Mac Address"}
+        "Mac Address": {"Entité": "IOC", "Types": "Mac Address"},
         "Bluetooth Address": {"Entité": "IOC", "Types": "Bluetooth address"},
     }
 
+    # Détecter les colonnes Name et Value
+    columns_lower = {str(col).strip().lower(): col for col in df.columns}
+    nom_col = columns_lower.get("name")
+    value_col = columns_lower.get("value")
+
+    if not nom_col or not value_col:
+        return results, imsi_list
 
     for idx, row in df.iterrows():
         nom = str(row[nom_col]).strip() if not pd.isna(row[nom_col]) else ""
@@ -137,7 +144,7 @@ def process_user_accounts(df):
 
         Entite = "Vecteur de com"
         if is_phone_number(entries):
-            mdc = "Moyen de com"
+            Entite = "Moyen de com"
 
         results.append({
             "Entité": Entite,
@@ -491,7 +498,10 @@ if __name__ == "__main__":
         nb_wa_doublons = nb_wa_avant - nb_wa_apres
 
         df_call_log = pd.DataFrame(call_log, columns=CALL_LOG_COLUMNS)
+        nb_call_avant = len(df_call_log)
+        df_call_log = df_call_log.drop_duplicates()
         nb_call = len(df_call_log)
+        nb_call_doublons = nb_call_avant - nb_call
 
         # Générer le nom du fichier de sortie
         base_name = os.path.splitext(file_name)[0]
