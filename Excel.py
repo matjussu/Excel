@@ -53,10 +53,7 @@ def get_country_code_from_imsi(imsi):
 
 def clean_vdc_entries(entries_text):
     """Nettoie et extrait les informations importantes pour les VDC (numéros, emails, IDs)"""
-    print(f"[DEBUG clean_vdc_entries] ENTREE dans la fonction avec: {entries_text[:100] if entries_text else 'None'}")
-
     if not entries_text or entries_text == "nan":
-        print(f"[DEBUG clean_vdc_entries] Retour vide car entries_text={entries_text}")
         return ""
 
     # Liste pour stocker les informations extraites
@@ -107,9 +104,7 @@ def clean_vdc_entries(entries_text):
             cleaned_info.append(url)
 
     # Retourner les informations séparées par des espaces ou des virgules
-    result = ' | '.join(cleaned_info) if cleaned_info else entries_text
-    print(f"[DEBUG clean_vdc_entries] SORTIE: cleaned_info a {len(cleaned_info)} éléments, résultat: {result[:100]}")
-    return result
+    return ' | '.join(cleaned_info) if cleaned_info else entries_text
 
 
 def is_phone_number(text):
@@ -130,6 +125,7 @@ def is_phone_number(text):
 
 def process_device_info(df, file_name):
     """Extrait les données de la feuille Device Info"""
+    print(f"[DEBUG process_device_info] file_name reçu = '{file_name}'")
     mdc_list = []
     ioc_list = []
     vdc_list = []
@@ -170,6 +166,7 @@ def process_device_info(df, file_name):
                     "Name": "",
                     "nom du fichier": file_name
                 }
+                print(f"[DEBUG] Entry créée dans process_device_info: {entry}")
 
                 # Ajouter à la bonne liste selon l'entité
                 if mapping["Entité"] == "Moyen de com":
@@ -189,6 +186,7 @@ def process_device_info(df, file_name):
 
 def process_user_accounts(df, file_name):
     """Extrait les données de la feuille User Accounts"""
+    print(f"[DEBUG process_user_accounts] file_name reçu = '{file_name}'")
     mdc_list = []
     vdc_list = []
 
@@ -219,13 +217,9 @@ def process_user_accounts(df, file_name):
         if is_phone_number(entries):
             Entite = "Moyen de com"
 
-        print(f"[DEBUG process_user_accounts] Entite={Entite}, entries[:50]={entries[:50]}")
-
         # Nettoyer les entrées pour les VDC
         if Entite == "Vecteur de com":
-            print(f"[DEBUG] Appel de clean_vdc_entries pour: {entries[:100]}")
             cleaned_entries = clean_vdc_entries(entries)
-            print(f"[DEBUG] Résultat clean_vdc_entries: {cleaned_entries[:100]}")
         else:
             cleaned_entries = entries
 
@@ -236,6 +230,7 @@ def process_user_accounts(df, file_name):
             "Name": account_name if account_name and account_name != "nan" else "",
             "nom du fichier": file_name
         }
+        print(f"[DEBUG] Entry créée dans process_user_accounts: {entry}")
 
         # Ajouter à la bonne liste selon l'entité
         if Entite == "Moyen de com":
@@ -575,14 +570,26 @@ if __name__ == "__main__":
         mdc, ioc, vdc, contacts_sim, contacts_whatsapp, call_log, _ = process_excel_file(file_path, country_code)
 
         # Créer les DataFrames pour MDC, IOC, VDC (sans déduplication)
+        print(f"[DEBUG] Avant création DataFrame, longueur listes: mdc={len(mdc)}, ioc={len(ioc)}, vdc={len(vdc)}")
+        if len(mdc) > 0:
+            print(f"[DEBUG] Premier élément de mdc: {mdc[0]}")
+        if len(vdc) > 0:
+            print(f"[DEBUG] Premier élément de vdc: {vdc[0]}")
+
         df_mdc = pd.DataFrame(mdc, columns=OUTPUT_COLUMNS)
         nb_mdc_apres = len(df_mdc)
+        print(f"[DEBUG] df_mdc créé, colonnes: {df_mdc.columns.tolist()}")
+        if len(df_mdc) > 0:
+            print(f"[DEBUG] Première ligne df_mdc['nom du fichier']: '{df_mdc['nom du fichier'].iloc[0]}'")
 
         df_ioc = pd.DataFrame(ioc, columns=OUTPUT_COLUMNS)
         nb_ioc_apres = len(df_ioc)
 
         df_vdc = pd.DataFrame(vdc, columns=OUTPUT_COLUMNS)
         nb_vdc_apres = len(df_vdc)
+        print(f"[DEBUG] df_vdc créé, colonnes: {df_vdc.columns.tolist()}")
+        if len(df_vdc) > 0:
+            print(f"[DEBUG] Première ligne df_vdc['nom du fichier']: '{df_vdc['nom du fichier'].iloc[0]}'")
 
         df_contacts_sim = pd.DataFrame(contacts_sim, columns=CONTACTS_COLUMNS)
         nb_sim_avant = len(df_contacts_sim)
