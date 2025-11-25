@@ -51,6 +51,62 @@ def get_country_code_from_imsi(imsi):
     return MCC_TO_COUNTRY_CODE.get(mcc)
 
 
+def clean_vdc_entries(entries_text):
+    """Nettoie et extrait les informations importantes pour les VDC (numéros, emails, IDs)"""
+    if not entries_text or entries_text == "nan":
+        return ""
+
+    # Liste pour stocker les informations extraites
+    cleaned_info = []
+
+    # 1. Extraire les numéros de téléphone (avec ou sans +, avec préfixes Phone-Mobile, Phone-Main, etc.)
+    phone_pattern = r'(?:Phone-[^:]*:\s*)?(\+?\d{8,15})'
+    phones = re.findall(phone_pattern, entries_text)
+    for phone in phones:
+        if phone not in cleaned_info:
+            cleaned_info.append(phone)
+
+    # 2. Extraire les emails
+    email_pattern = r'(?:Email-?[^:]*:\s*)?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})'
+    emails = re.findall(email_pattern, entries_text, re.IGNORECASE)
+    for email in emails:
+        # Démasquer les emails partiellement masqués (ex: j***u@gmail.com)
+        if email not in cleaned_info:
+            cleaned_info.append(email)
+
+    # 3. Extraire les User IDs (UUIDs, nombres longs, identifiants WhatsApp, etc.)
+    # UUID format
+    uuid_pattern = r'(?:User ID-User ID:\s*)?([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})'
+    uuids = re.findall(uuid_pattern, entries_text, re.IGNORECASE)
+    for uuid in uuids:
+        if uuid not in cleaned_info:
+            cleaned_info.append(uuid)
+
+    # WhatsApp ID
+    whatsapp_pattern = r'(?:WhatsApp User Id:\s*)?(\d+@s\.whatsapp\.net)'
+    whatsapp_ids = re.findall(whatsapp_pattern, entries_text, re.IGNORECASE)
+    for wid in whatsapp_ids:
+        if wid not in cleaned_info:
+            cleaned_info.append(wid)
+
+    # Numéros longs (IDs numériques de 10+ chiffres qui ne sont pas des téléphones)
+    long_id_pattern = r'(?:User ID-User ID:\s*)?(\d{15,})'
+    long_ids = re.findall(long_id_pattern, entries_text)
+    for lid in long_ids:
+        if lid not in cleaned_info and lid not in phones:
+            cleaned_info.append(lid)
+
+    # 4. Extraire les URLs importantes (images de profil, etc.)
+    url_pattern = r'(https?://[^\s]+)'
+    urls = re.findall(url_pattern, entries_text)
+    for url in urls:
+        if url not in cleaned_info:
+            cleaned_info.append(url)
+
+    # Retourner les informations séparées par des espaces ou des virgules
+    return ' | '.join(cleaned_info) if cleaned_info else entries_text
+
+
 def is_phone_number(text):
     """Détecte si le texte est un numéro de téléphone"""
     if pd.isna(text):
@@ -113,13 +169,10 @@ def process_device_info(df, file_name):
                 # Ajouter à la bonne liste selon l'entité
                 if mapping["Entité"] == "Moyen de com":
                     mdc_list.append(entry)
-                    print(f"    DEBUG: Ajout MDC - {mapping['Types']}: {value[:20]}...")
                 elif mapping["Entité"] == "IOC":
                     ioc_list.append(entry)
-                    print(f"    DEBUG: Ajout IOC - {mapping['Types']}: {value[:20]}...")
                 elif mapping["Entité"] == "Vecteur de com":
                     vdc_list.append(entry)
-                    print(f"    DEBUG: Ajout VDC - {mapping['Types']}: {value[:20]}...")
 
                 if key == "IMSI":
                     imsi_list.append(value)
@@ -161,10 +214,13 @@ def process_user_accounts(df, file_name):
         if is_phone_number(entries):
             Entite = "Moyen de com"
 
+        # Nettoyer les entrées pour les VDC
+        cleaned_entries = clean_vdc_entries(entries) if Entite == "Vecteur de com" else entries
+
         entry = {
             "Entité": Entite,
             "Types": source if source and source != "nan" else "Unknown",
-            "Numéro associé": entries,
+            "Numéro associé": cleaned_entries,
             "Name": account_name if account_name and account_name != "nan" else "",
             "nom du fichier": file_name
         }
@@ -172,10 +228,8 @@ def process_user_accounts(df, file_name):
         # Ajouter à la bonne liste selon l'entité
         if Entite == "Moyen de com":
             mdc_list.append(entry)
-            print(f"    DEBUG: Ajout MDC (User Accounts) - {source}: {entries[:20]}...")
         else:
             vdc_list.append(entry)
-            print(f"    DEBUG: Ajout VDC (User Accounts) - {source}: {entries[:20]}...")
 
     return mdc_list, vdc_list
 
@@ -306,9 +360,6 @@ def process_call_log(df, country_code="999"):
 
     # Créer le mapping des colonnes (case-insensitive et trimmed)
     columns_lower = {str(col).strip().lower(): col for col in df.columns}
-
-    # Debug : afficher TOUTES les colonnes
-    print(f"    → Colonnes disponibles ({len(columns_lower)}) : {list(columns_lower.keys())}")
 
     # Rechercher les colonnes avec flexibilité
     parties_col = None
@@ -446,12 +497,6 @@ def process_excel_file(file_path, country_code="999"):
             import traceback
             traceback.print_exc()
 
-    # Debug: Afficher le résumé des listes
-    print(f"\n  DEBUG - Résumé après traitement:")
-    print(f"    MDC: {len(all_mdc)} entrées")
-    print(f"    IOC: {len(all_ioc)} entrées")
-    print(f"    VDC: {len(all_vdc)} entrées")
-
     return all_mdc, all_ioc, all_vdc, all_contacts_sim, all_contacts_whatsapp, all_call_log, all_imsi
 
 
@@ -517,36 +562,15 @@ if __name__ == "__main__":
         # Étape 2 : Traiter le fichier
         mdc, ioc, vdc, contacts_sim, contacts_whatsapp, call_log, _ = process_excel_file(file_path, country_code)
 
-        # Debug: Afficher le contenu des listes avant création DataFrame
-        print(f"\n  DEBUG - Tailles des listes reçues:")
-        print(f"    len(mdc) = {len(mdc)}")
-        print(f"    len(ioc) = {len(ioc)}")
-        print(f"    len(vdc) = {len(vdc)}")
-
         # Créer les DataFrames pour MDC, IOC, VDC (sans déduplication)
         df_mdc = pd.DataFrame(mdc, columns=OUTPUT_COLUMNS)
         nb_mdc_apres = len(df_mdc)
 
-        print(f"\n  DEBUG - Aperçu df_mdc:")
-        print(f"    Taille: {len(df_mdc)}")
-        if len(df_mdc) > 0:
-            print(f"    Types uniques: {df_mdc['Types'].unique().tolist()}")
-
         df_ioc = pd.DataFrame(ioc, columns=OUTPUT_COLUMNS)
         nb_ioc_apres = len(df_ioc)
 
-        print(f"\n  DEBUG - Aperçu df_ioc:")
-        print(f"    Taille: {len(df_ioc)}")
-        if len(df_ioc) > 0:
-            print(f"    Types uniques: {df_ioc['Types'].unique().tolist()}")
-
         df_vdc = pd.DataFrame(vdc, columns=OUTPUT_COLUMNS)
         nb_vdc_apres = len(df_vdc)
-
-        print(f"\n  DEBUG - Aperçu df_vdc:")
-        print(f"    Taille: {len(df_vdc)}")
-        if len(df_vdc) > 0:
-            print(f"    Types uniques: {df_vdc['Types'].unique().tolist()}")
 
         df_contacts_sim = pd.DataFrame(contacts_sim, columns=CONTACTS_COLUMNS)
         nb_sim_avant = len(df_contacts_sim)
