@@ -523,36 +523,27 @@ if __name__ == "__main__":
         print(f"    len(ioc) = {len(ioc)}")
         print(f"    len(vdc) = {len(vdc)}")
 
-        # Créer les DataFrames et compter les doublons pour MDC, IOC, VDC
+        # Créer les DataFrames pour MDC, IOC, VDC (sans déduplication)
         df_mdc = pd.DataFrame(mdc, columns=OUTPUT_COLUMNS)
-        nb_mdc_avant = len(df_mdc)
-        df_mdc = df_mdc.drop_duplicates()
         nb_mdc_apres = len(df_mdc)
-        nb_mdc_doublons = nb_mdc_avant - nb_mdc_apres
 
-        print(f"\n  DEBUG - Aperçu df_mdc (après déduplication):")
+        print(f"\n  DEBUG - Aperçu df_mdc:")
         print(f"    Taille: {len(df_mdc)}")
         if len(df_mdc) > 0:
             print(f"    Types uniques: {df_mdc['Types'].unique().tolist()}")
 
         df_ioc = pd.DataFrame(ioc, columns=OUTPUT_COLUMNS)
-        nb_ioc_avant = len(df_ioc)
-        df_ioc = df_ioc.drop_duplicates()
         nb_ioc_apres = len(df_ioc)
-        nb_ioc_doublons = nb_ioc_avant - nb_ioc_apres
 
-        print(f"\n  DEBUG - Aperçu df_ioc (après déduplication):")
+        print(f"\n  DEBUG - Aperçu df_ioc:")
         print(f"    Taille: {len(df_ioc)}")
         if len(df_ioc) > 0:
             print(f"    Types uniques: {df_ioc['Types'].unique().tolist()}")
 
         df_vdc = pd.DataFrame(vdc, columns=OUTPUT_COLUMNS)
-        nb_vdc_avant = len(df_vdc)
-        df_vdc = df_vdc.drop_duplicates()
         nb_vdc_apres = len(df_vdc)
-        nb_vdc_doublons = nb_vdc_avant - nb_vdc_apres
 
-        print(f"\n  DEBUG - Aperçu df_vdc (après déduplication):")
+        print(f"\n  DEBUG - Aperçu df_vdc:")
         print(f"    Taille: {len(df_vdc)}")
         if len(df_vdc) > 0:
             print(f"    Types uniques: {df_vdc['Types'].unique().tolist()}")
@@ -605,11 +596,11 @@ if __name__ == "__main__":
 
         # Afficher les résultats (seulement pour les feuilles non vides)
         if nb_mdc_apres > 0:
-            print(f"  ✓ MDC : {nb_mdc_apres} entrées  # {nb_mdc_doublons} doublon(s) supprimé(s)")
+            print(f"  ✓ MDC : {nb_mdc_apres} entrées")
         if nb_ioc_apres > 0:
-            print(f"  ✓ IOC : {nb_ioc_apres} entrées  # {nb_ioc_doublons} doublon(s) supprimé(s)")
+            print(f"  ✓ IOC : {nb_ioc_apres} entrées")
         if nb_vdc_apres > 0:
-            print(f"  ✓ VDC : {nb_vdc_apres} entrées  # {nb_vdc_doublons} doublon(s) supprimé(s)")
+            print(f"  ✓ VDC : {nb_vdc_apres} entrées")
         if nb_sim_apres > 0:
             print(f"  ✓ Feuil_Contacts : {nb_sim_apres} entrées  # {nb_sim_doublons} doublon(s) supprimé(s)")
         if nb_wa_apres > 0:
