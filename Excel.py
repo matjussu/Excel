@@ -53,7 +53,10 @@ def get_country_code_from_imsi(imsi):
 
 def clean_vdc_entries(entries_text):
     """Nettoie et extrait les informations importantes pour les VDC (numéros, emails, IDs)"""
+    print(f"[DEBUG clean_vdc_entries] ENTREE dans la fonction avec: {entries_text[:100] if entries_text else 'None'}")
+
     if not entries_text or entries_text == "nan":
+        print(f"[DEBUG clean_vdc_entries] Retour vide car entries_text={entries_text}")
         return ""
 
     # Liste pour stocker les informations extraites
@@ -104,7 +107,9 @@ def clean_vdc_entries(entries_text):
             cleaned_info.append(url)
 
     # Retourner les informations séparées par des espaces ou des virgules
-    return ' | '.join(cleaned_info) if cleaned_info else entries_text
+    result = ' | '.join(cleaned_info) if cleaned_info else entries_text
+    print(f"[DEBUG clean_vdc_entries] SORTIE: cleaned_info a {len(cleaned_info)} éléments, résultat: {result[:100]}")
+    return result
 
 
 def is_phone_number(text):
@@ -214,8 +219,15 @@ def process_user_accounts(df, file_name):
         if is_phone_number(entries):
             Entite = "Moyen de com"
 
+        print(f"[DEBUG process_user_accounts] Entite={Entite}, entries[:50]={entries[:50]}")
+
         # Nettoyer les entrées pour les VDC
-        cleaned_entries = clean_vdc_entries(entries) if Entite == "Vecteur de com" else entries
+        if Entite == "Vecteur de com":
+            print(f"[DEBUG] Appel de clean_vdc_entries pour: {entries[:100]}")
+            cleaned_entries = clean_vdc_entries(entries)
+            print(f"[DEBUG] Résultat clean_vdc_entries: {cleaned_entries[:100]}")
+        else:
+            cleaned_entries = entries
 
         entry = {
             "Entité": Entite,
