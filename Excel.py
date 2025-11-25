@@ -113,10 +113,13 @@ def process_device_info(df, file_name):
                 # Ajouter à la bonne liste selon l'entité
                 if mapping["Entité"] == "Moyen de com":
                     mdc_list.append(entry)
+                    print(f"    DEBUG: Ajout MDC - {mapping['Types']}: {value[:20]}...")
                 elif mapping["Entité"] == "IOC":
                     ioc_list.append(entry)
+                    print(f"    DEBUG: Ajout IOC - {mapping['Types']}: {value[:20]}...")
                 elif mapping["Entité"] == "Vecteur de com":
                     vdc_list.append(entry)
+                    print(f"    DEBUG: Ajout VDC - {mapping['Types']}: {value[:20]}...")
 
                 if key == "IMSI":
                     imsi_list.append(value)
@@ -169,8 +172,10 @@ def process_user_accounts(df, file_name):
         # Ajouter à la bonne liste selon l'entité
         if Entite == "Moyen de com":
             mdc_list.append(entry)
+            print(f"    DEBUG: Ajout MDC (User Accounts) - {source}: {entries[:20]}...")
         else:
             vdc_list.append(entry)
+            print(f"    DEBUG: Ajout VDC (User Accounts) - {source}: {entries[:20]}...")
 
     return mdc_list, vdc_list
 
@@ -440,6 +445,12 @@ def process_excel_file(file_path, country_code="999"):
             print(f"  ✗ Erreur Call log : {e}")
             import traceback
             traceback.print_exc()
+
+    # Debug: Afficher le résumé des listes
+    print(f"\n  DEBUG - Résumé après traitement:")
+    print(f"    MDC: {len(all_mdc)} entrées")
+    print(f"    IOC: {len(all_ioc)} entrées")
+    print(f"    VDC: {len(all_vdc)} entrées")
 
     return all_mdc, all_ioc, all_vdc, all_contacts_sim, all_contacts_whatsapp, all_call_log, all_imsi
 
