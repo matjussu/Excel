@@ -3,7 +3,7 @@ import pandas as pd
 import re
 
 # Configuration
-INPUT_FOLDER = "INPUT"
+INPUT_FOLDER = "BRUT"
 OUTPUT_FOLDER = "OUTPUT"
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
@@ -14,7 +14,7 @@ CONTACTS_SHEET = "Contacts"
 CALL_LOG_SHEET = "Call Log"
 
 # Colonnes de sortie
-OUTPUT_COLUMNS = ["MDC", "Types", "Numéro associé", "Name"]
+OUTPUT_COLUMNS = ["Entité", "Types", "Numéro associé", "Name"]
 CONTACTS_COLUMNS = ["Name", "Entries", "Num1", "Type1", "relation", "Num2", "Type2", "commentaire"]
 CALL_LOG_COLUMNS = ["Parties", "Direction", "Num1", "Type", "Relation", "Num2", "Durée", "Dates", "Heure"]
 
@@ -76,33 +76,13 @@ def process_device_info(df):
         return results, imsi_list
 
     device_mappings = {
-        "IMEI": {"MDC": "Téléphone", "Types": "IMEI"},
-        "IMSI": {"MDC": "Téléphone", "Types": "IMSI"},
-        "Advertising ID": {"MDC": "Vecteur de com", "Types": "Advertising ID"},
-        "Mac Address": {"MDC": "IOC", "Types": "Mac Address"},
-        "MAC Address": {"MDC": "IOC", "Types": "Mac Address"},
-        "Bluetooth": {"MDC": "IOC", "Types": "Bluetooth"},
-        "Bluetooth Address": {"MDC": "IOC", "Types": "Bluetooth"},
+        "IMEI": {"Entité": "Moyen de com", "Types": "IMEI"},
+        "IMSI": {"Entité": "Moyen de com", "Types": "IMSI"},
+        "Advertising ID": {"Entité ": "Vecteur de com", "Types": "Advertising ID"},
+        "Mac Address": {"Entité": "IOC", "Types": "Mac Address"}
+        "Bluetooth Address": {"Entité": "IOC", "Types": "Bluetooth address"},
     }
 
-    columns_lower = {col.lower() if isinstance(col, str) else str(col).lower(): col for col in df.columns}
-
-    nom_col = None
-    value_col = None
-
-    for key, col in columns_lower.items():
-        if "name" in key or "nom" in key:
-            nom_col = col
-        if "value" in key or "valeur" in key:
-            value_col = col
-
-    if not nom_col or not value_col:
-        if len(df.columns) >= 2:
-            nom_col = df.columns[-2]
-            value_col = df.columns[-1]
-
-    if not nom_col or not value_col:
-        return results, imsi_list
 
     for idx, row in df.iterrows():
         nom = str(row[nom_col]).strip() if not pd.isna(row[nom_col]) else ""
@@ -114,7 +94,7 @@ def process_device_info(df):
         for key, mapping in device_mappings.items():
             if key.lower() in nom.lower():
                 results.append({
-                    "MDC": mapping["MDC"],
+                    "Entité": mapping["Entité"],
                     "Types": mapping["Types"],
                     "Numéro associé": value,
                     "Name": ""
@@ -155,12 +135,12 @@ def process_user_accounts(df):
         if not entries or entries == "nan":
             continue
 
-        mdc = "Vecteur de com"
+        Entite = "Vecteur de com"
         if is_phone_number(entries):
-            mdc = "Téléphone"
+            mdc = "Moyen de com"
 
         results.append({
-            "MDC": mdc,
+            "Entité": Entite,
             "Types": source if source and source != "nan" else "Unknown",
             "Numéro associé": entries,
             "Name": account_name if account_name and account_name != "nan" else ""
@@ -310,58 +290,18 @@ def process_call_log(df, country_code="999"):
     for key, col in columns_lower.items():
         if not parties_col and ("parties" in key or "party" in key or "partie" in key):
             parties_col = col
-            print(f"    ✓ Colonne Parties trouvée : key='{key}' → col='{col}'")
-
         if not date_col and "date" in key:
             date_col = col
-            print(f"    ✓ Colonne Date trouvée : key='{key}' → col='{col}'")
 
         if not time_col and "time" in key:
             time_col = col
-            print(f"    ✓ Colonne Time trouvée : key='{key}' → col='{col}'")
 
         if not duration_col and ("duration" in key or "durée" in key or "duree" in key):
             duration_col = col
-            print(f"    ✓ Colonne Duration trouvée : key='{key}' → col='{col}'")
 
         if not direction_col and "direction" in key:
             direction_col = col
-            print(f"    ✓ Colonne Direction trouvée : key='{key}' → col='{col}'")
 
-        if not source_col and "source" in key:
-            source_col = col
-            print(f"    ✓ Colonne Source trouvée : key='{key}' → col='{col}'")
-
-    # Vérifier que la colonne Parties existe
-    if not parties_col:
-        print(f"    ✗ Colonne 'Parties' introuvable dans Call log")
-        return call_log_entries
-
-    # Avertir si des colonnes importantes manquent
-    if not date_col:
-        print(f"    ⚠ Colonne 'Date' non trouvée")
-    if not time_col:
-        print(f"    ⚠ Colonne 'Time' non trouvée")
-    if not duration_col:
-        print(f"    ⚠ Colonne 'Duration' non trouvée")
-    if not direction_col:
-        print(f"    ⚠ Colonne 'Direction' non trouvée")
-
-    # Afficher un aperçu des premières données
-    print(f"    → Call log: {len(df)} lignes détectées")
-    preview_count = min(2, len(df))
-    if preview_count > 0:
-        print(f"    Aperçu des {preview_count} première(s) ligne(s) :")
-        for i in range(preview_count):
-            print(f"      Ligne [{i+1}]:")
-            print(f"        Parties: {repr(df.iloc[i][parties_col]) if parties_col else 'N/A'}")
-            print(f"        Date: {repr(df.iloc[i][date_col]) if date_col else 'N/A'}")
-            print(f"        Time: {repr(df.iloc[i][time_col]) if time_col else 'N/A'}")
-            print(f"        Duration: {repr(df.iloc[i][duration_col]) if duration_col else 'N/A'}")
-            print(f"        Direction: {repr(df.iloc[i][direction_col]) if direction_col else 'N/A'}")
-
-    lignes_valides = 0
-    lignes_ignorees = 0
 
     for idx, row in df.iterrows():
         # Récupérer les valeurs brutes avec vérification pd.isna()
@@ -378,27 +318,6 @@ def process_call_log(df, country_code="999"):
         duration = str(duration_raw).strip()
         direction = str(direction_raw).strip()
 
-        # Ignorer les lignes sans valeur Parties valide
-        if not parties or parties == "nan" or parties == "":
-            lignes_ignorees += 1
-            continue
-
-        lignes_valides += 1
-
-        # Debug : afficher les valeurs brutes pour la première ligne
-        if lignes_valides == 1:
-            print(f"\n    DEBUG - Première ligne valide :")
-            print(f"      parties_raw = {repr(parties_raw)}")
-            print(f"      date_raw = {repr(date_raw)}")
-            print(f"      time_raw = {repr(time_raw)}")
-            print(f"      duration_raw = {repr(duration_raw)}")
-            print(f"      direction_raw = {repr(direction_raw)}")
-            print(f"      Après conversion string :")
-            print(f"      parties = {repr(parties)}")
-            print(f"      date = {repr(date)}")
-            print(f"      time = {repr(time)}")
-            print(f"      duration = {repr(duration)}")
-            print(f"      direction = {repr(direction)}\n")
 
         # Convertir Duration en secondes
         duration_seconds = convert_duration_to_seconds(duration)
@@ -429,13 +348,6 @@ def process_call_log(df, country_code="999"):
         }
 
         call_log_entries.append(call_log_entry)
-
-    # Résumé du traitement
-    if lignes_valides == 0:
-        print(f"    ⚠ Aucune donnée valide trouvée ({lignes_ignorees} lignes ignorées car Parties vide)")
-    else:
-        print(f"    ✓ {lignes_valides} entrée(s) valide(s) extraite(s) ({lignes_ignorees} ignorée(s))")
-
     return call_log_entries
 
 
@@ -488,12 +400,6 @@ def process_excel_file(file_path, country_code="999"):
             # Essayer header=1 d'abord
             df_call_log = pd.read_excel(xls, sheet_name=CALL_LOG_SHEET, header=1)
             call_log_entries = process_call_log(df_call_log, country_code)
-
-            # Si aucune entrée n'a été trouvée, essayer avec header=0
-            if not call_log_entries:
-                print("    → Tentative avec header=0...")
-                df_call_log = pd.read_excel(xls, sheet_name=CALL_LOG_SHEET, header=0)
-                call_log_entries = process_call_log(df_call_log, country_code)
 
             all_call_log.extend(call_log_entries)
         except Exception as e:
@@ -557,8 +463,8 @@ if __name__ == "__main__":
             country_code = input(f"  → Entrez l'indicatif pays pour '{file_name}' (ex: 33 pour France, Entrée pour 999) : ").strip()
 
             if not country_code:
-                print("  → Utilisation de l'indicatif par défaut : 999")
-                country_code = "999"
+                print("  → Utilisation de l'indicatif par défaut :")
+                country_code = ""
             else:
                 print(f"  ✓ Utilisation de l'indicatif : +{country_code}")
 
@@ -585,10 +491,7 @@ if __name__ == "__main__":
         nb_wa_doublons = nb_wa_avant - nb_wa_apres
 
         df_call_log = pd.DataFrame(call_log, columns=CALL_LOG_COLUMNS)
-        nb_call_avant = len(df_call_log)
-        df_call_log = df_call_log.drop_duplicates()
-        nb_call_apres = len(df_call_log)
-        nb_call_doublons = nb_call_avant - nb_call_apres
+        nb_call = len(df_call_log)
 
         # Générer le nom du fichier de sortie
         base_name = os.path.splitext(file_name)[0]
@@ -608,20 +511,19 @@ if __name__ == "__main__":
             if nb_wa_apres > 0:
                 df_contacts_whatsapp.to_excel(writer, sheet_name="Feuil_What'sapp", index=False)
                 print(f"     ✓ Feuille Feuil_What'sapp créée")
-            if nb_call_apres > 0:
+            if nb_call > 0:
                 df_call_log.to_excel(writer, sheet_name="Feuil_Call", index=False)
                 print(f"     ✓ Feuille Feuil_Call créée")
 
         # Afficher les résultats (seulement pour les feuilles non vides)
-        print()
         if nb_info_apres > 0:
             print(f"  ✓ Info_Perso : {nb_info_apres} entrées  # {nb_info_doublons} doublon(s) supprimé(s)")
         if nb_sim_apres > 0:
             print(f"  ✓ Feuil_Contacts : {nb_sim_apres} entrées  # {nb_sim_doublons} doublon(s) supprimé(s)")
         if nb_wa_apres > 0:
             print(f"  ✓ Feuil_What'sapp : {nb_wa_apres} entrées  # {nb_wa_doublons} doublon(s) supprimé(s)")
-        if nb_call_apres > 0:
-            print(f"  ✓ Feuil_Call : {nb_call_apres} entrées  # {nb_call_doublons} doublon(s) supprimé(s)")
+        if nb_call > 0:
+            print(f"  ✓ Feuil_Call : {nb_call} entrées  # {nb_call_doublons} doublon(s) supprimé(s)")
 
         print(f"  ✓ Fichier créé : {output_file_name}")
 
