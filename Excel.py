@@ -617,6 +617,16 @@ if __name__ == "__main__":
         # Créer le fichier de sortie
         print(f"\n  → Création du fichier Excel : {output_file_name}")
 
+        # DEBUG: Vérifier le contenu des DataFrames avant écriture
+        print(f"[DEBUG FINAL] Vérification avant écriture Excel:")
+        if nb_mdc_apres > 0:
+            print(f"  df_mdc.columns = {df_mdc.columns.tolist()}")
+            print(f"  df_mdc['nom du fichier'].iloc[0] = '{df_mdc['nom du fichier'].iloc[0]}'")
+            print(f"  df_mdc.head(1) = \n{df_mdc.head(1)}")
+        if nb_vdc_apres > 0:
+            print(f"  df_vdc.columns = {df_vdc.columns.tolist()}")
+            print(f"  df_vdc['nom du fichier'].iloc[0] = '{df_vdc['nom du fichier'].iloc[0]}'")
+
         with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
             if nb_mdc_apres > 0:
                 df_mdc.to_excel(writer, sheet_name="MDC", index=False)
