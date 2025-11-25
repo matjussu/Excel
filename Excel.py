@@ -517,6 +517,12 @@ if __name__ == "__main__":
         # Étape 2 : Traiter le fichier
         mdc, ioc, vdc, contacts_sim, contacts_whatsapp, call_log, _ = process_excel_file(file_path, country_code)
 
+        # Debug: Afficher le contenu des listes avant création DataFrame
+        print(f"\n  DEBUG - Tailles des listes reçues:")
+        print(f"    len(mdc) = {len(mdc)}")
+        print(f"    len(ioc) = {len(ioc)}")
+        print(f"    len(vdc) = {len(vdc)}")
+
         # Créer les DataFrames et compter les doublons pour MDC, IOC, VDC
         df_mdc = pd.DataFrame(mdc, columns=OUTPUT_COLUMNS)
         nb_mdc_avant = len(df_mdc)
@@ -524,17 +530,32 @@ if __name__ == "__main__":
         nb_mdc_apres = len(df_mdc)
         nb_mdc_doublons = nb_mdc_avant - nb_mdc_apres
 
+        print(f"\n  DEBUG - Aperçu df_mdc (après déduplication):")
+        print(f"    Taille: {len(df_mdc)}")
+        if len(df_mdc) > 0:
+            print(f"    Types uniques: {df_mdc['Types'].unique().tolist()}")
+
         df_ioc = pd.DataFrame(ioc, columns=OUTPUT_COLUMNS)
         nb_ioc_avant = len(df_ioc)
         df_ioc = df_ioc.drop_duplicates()
         nb_ioc_apres = len(df_ioc)
         nb_ioc_doublons = nb_ioc_avant - nb_ioc_apres
 
+        print(f"\n  DEBUG - Aperçu df_ioc (après déduplication):")
+        print(f"    Taille: {len(df_ioc)}")
+        if len(df_ioc) > 0:
+            print(f"    Types uniques: {df_ioc['Types'].unique().tolist()}")
+
         df_vdc = pd.DataFrame(vdc, columns=OUTPUT_COLUMNS)
         nb_vdc_avant = len(df_vdc)
         df_vdc = df_vdc.drop_duplicates()
         nb_vdc_apres = len(df_vdc)
         nb_vdc_doublons = nb_vdc_avant - nb_vdc_apres
+
+        print(f"\n  DEBUG - Aperçu df_vdc (après déduplication):")
+        print(f"    Taille: {len(df_vdc)}")
+        if len(df_vdc) > 0:
+            print(f"    Types uniques: {df_vdc['Types'].unique().tolist()}")
 
         df_contacts_sim = pd.DataFrame(contacts_sim, columns=CONTACTS_COLUMNS)
         nb_sim_avant = len(df_contacts_sim)
