@@ -14,7 +14,7 @@ CONTACTS_SHEET = "Contacts"
 CALL_LOG_SHEET = "Call Log"
 
 # Colonnes de sortie
-OUTPUT_COLUMNS = ["Entité", "Types", "Numéro associé", "Name"]
+OUTPUT_COLUMNS = ["Entité", "Types", "Numéro associé", "Name", "nom du fichier"]
 CONTACTS_COLUMNS = ["Name", "Entries", "Num1", "Type1", "relation", "Num2", "Type2", "commentaire"]
 CALL_LOG_COLUMNS = ["Parties", "Direction", "Num1", "Type", "Relation", "Num2", "Durée", "Dates", "Heure"]
 
@@ -67,18 +67,20 @@ def is_phone_number(text):
     return False
 
 
-def process_device_info(df):
+def process_device_info(df, file_name):
     """Extrait les données de la feuille Device Info"""
-    results = []
+    mdc_list = []
+    ioc_list = []
+    vdc_list = []
     imsi_list = []
 
     if df.empty:
-        return results, imsi_list
+        return mdc_list, ioc_list, vdc_list, imsi_list
 
     device_mappings = {
         "IMEI": {"Entité": "Moyen de com", "Types": "IMEI"},
         "IMSI": {"Entité": "Moyen de com", "Types": "IMSI"},
-        "Advertising ID": {"Entité ": "Vecteur de com", "Types": "Advertising ID"},
+        "Advertising ID": {"Entité": "Vecteur de com", "Types": "Advertising ID"},
         "Mac Address": {"Entité": "IOC", "Types": "Mac Address"},
         "Bluetooth Address": {"Entité": "IOC", "Types": "Bluetooth address"},
     }
@@ -89,7 +91,7 @@ def process_device_info(df):
     value_col = columns_lower.get("value")
 
     if not nom_col or not value_col:
-        return results, imsi_list
+        return mdc_list, ioc_list, vdc_list, imsi_list
 
     for idx, row in df.iterrows():
         nom = str(row[nom_col]).strip() if not pd.isna(row[nom_col]) else ""
@@ -100,27 +102,37 @@ def process_device_info(df):
 
         for key, mapping in device_mappings.items():
             if key.lower() in nom.lower():
-                results.append({
+                entry = {
                     "Entité": mapping["Entité"],
                     "Types": mapping["Types"],
                     "Numéro associé": value,
-                    "Name": ""
-                })
+                    "Name": "",
+                    "nom du fichier": file_name
+                }
+
+                # Ajouter à la bonne liste selon l'entité
+                if mapping["Entité"] == "Moyen de com":
+                    mdc_list.append(entry)
+                elif mapping["Entité"] == "IOC":
+                    ioc_list.append(entry)
+                elif mapping["Entité"] == "Vecteur de com":
+                    vdc_list.append(entry)
 
                 if key == "IMSI":
                     imsi_list.append(value)
 
                 break
 
-    return results, imsi_list
+    return mdc_list, ioc_list, vdc_list, imsi_list
 
 
-def process_user_accounts(df):
+def process_user_accounts(df, file_name):
     """Extrait les données de la feuille User Accounts"""
-    results = []
+    mdc_list = []
+    vdc_list = []
 
     if df.empty:
-        return results
+        return mdc_list, vdc_list
 
     columns_lower = {str(col).strip().lower(): col for col in df.columns}
 
@@ -129,7 +141,7 @@ def process_user_accounts(df):
     account_name_col = columns_lower.get("account name")
 
     if not entries_col or not source_col:
-        return results
+        return mdc_list, vdc_list
 
     for idx, row in df.iterrows():
         entries = str(row[entries_col]).strip() if not pd.isna(row[entries_col]) else ""
@@ -146,14 +158,21 @@ def process_user_accounts(df):
         if is_phone_number(entries):
             Entite = "Moyen de com"
 
-        results.append({
+        entry = {
             "Entité": Entite,
             "Types": source if source and source != "nan" else "Unknown",
             "Numéro associé": entries,
-            "Name": account_name if account_name and account_name != "nan" else ""
-        })
+            "Name": account_name if account_name and account_name != "nan" else "",
+            "nom du fichier": file_name
+        }
 
-    return results
+        # Ajouter à la bonne liste selon l'entité
+        if Entite == "Moyen de com":
+            mdc_list.append(entry)
+        else:
+            vdc_list.append(entry)
+
+    return mdc_list, vdc_list
 
 
 def extract_phone_numbers(entries_text, country_code="999"):
@@ -360,24 +379,31 @@ def process_call_log(df, country_code="999"):
 
 def process_excel_file(file_path, country_code="999"):
     """Traite un fichier Excel et extrait les informations"""
-    all_results = []
+    all_mdc = []
+    all_ioc = []
+    all_vdc = []
     all_contacts_sim = []
     all_contacts_whatsapp = []
     all_call_log = []
     all_imsi = []
 
+    # Extraire le nom de fichier sans extension
+    file_name = os.path.splitext(os.path.basename(file_path))[0]
+
     try:
         xls = pd.ExcelFile(file_path)
     except Exception as e:
         print(f"  ✗ Erreur de lecture : {e}")
-        return all_results, all_contacts_sim, all_contacts_whatsapp, all_call_log, all_imsi
+        return all_mdc, all_ioc, all_vdc, all_contacts_sim, all_contacts_whatsapp, all_call_log, all_imsi
 
     # Traiter Device Info
     if DEVICE_INFO_SHEET in xls.sheet_names:
         try:
             df_device = pd.read_excel(xls, sheet_name=DEVICE_INFO_SHEET, header=1)
-            device_results, imsi_list = process_device_info(df_device)
-            all_results.extend(device_results)
+            mdc_list, ioc_list, vdc_list, imsi_list = process_device_info(df_device, file_name)
+            all_mdc.extend(mdc_list)
+            all_ioc.extend(ioc_list)
+            all_vdc.extend(vdc_list)
             all_imsi.extend(imsi_list)
         except Exception as e:
             print(f"  ✗ Erreur Device Info : {e}")
@@ -386,8 +412,9 @@ def process_excel_file(file_path, country_code="999"):
     if USER_ACCOUNTS_SHEET in xls.sheet_names:
         try:
             df_accounts = pd.read_excel(xls, sheet_name=USER_ACCOUNTS_SHEET, header=1)
-            accounts_results = process_user_accounts(df_accounts)
-            all_results.extend(accounts_results)
+            mdc_list, vdc_list = process_user_accounts(df_accounts, file_name)
+            all_mdc.extend(mdc_list)
+            all_vdc.extend(vdc_list)
         except Exception as e:
             print(f"  ✗ Erreur User Accounts : {e}")
 
@@ -414,7 +441,7 @@ def process_excel_file(file_path, country_code="999"):
             import traceback
             traceback.print_exc()
 
-    return all_results, all_contacts_sim, all_contacts_whatsapp, all_call_log, all_imsi
+    return all_mdc, all_ioc, all_vdc, all_contacts_sim, all_contacts_whatsapp, all_call_log, all_imsi
 
 
 if __name__ == "__main__":
@@ -450,7 +477,8 @@ if __name__ == "__main__":
             xls = pd.ExcelFile(file_path)
             if DEVICE_INFO_SHEET in xls.sheet_names:
                 df_device = pd.read_excel(xls, sheet_name=DEVICE_INFO_SHEET, header=1)
-                _, imsi_list = process_device_info(df_device)
+                base_name_temp = os.path.splitext(file_name)[0]
+                _, _, _, imsi_list = process_device_info(df_device, base_name_temp)
 
                 if imsi_list:
                     first_imsi = imsi_list[0]
@@ -476,14 +504,26 @@ if __name__ == "__main__":
                 print(f"  ✓ Utilisation de l'indicatif : +{country_code}")
 
         # Étape 2 : Traiter le fichier
-        results, contacts_sim, contacts_whatsapp, call_log, _ = process_excel_file(file_path, country_code)
+        mdc, ioc, vdc, contacts_sim, contacts_whatsapp, call_log, _ = process_excel_file(file_path, country_code)
 
-        # Créer les DataFrames et compter les doublons
-        df_output = pd.DataFrame(results, columns=OUTPUT_COLUMNS)
-        nb_info_avant = len(df_output)
-        df_output = df_output.drop_duplicates()
-        nb_info_apres = len(df_output)
-        nb_info_doublons = nb_info_avant - nb_info_apres
+        # Créer les DataFrames et compter les doublons pour MDC, IOC, VDC
+        df_mdc = pd.DataFrame(mdc, columns=OUTPUT_COLUMNS)
+        nb_mdc_avant = len(df_mdc)
+        df_mdc = df_mdc.drop_duplicates()
+        nb_mdc_apres = len(df_mdc)
+        nb_mdc_doublons = nb_mdc_avant - nb_mdc_apres
+
+        df_ioc = pd.DataFrame(ioc, columns=OUTPUT_COLUMNS)
+        nb_ioc_avant = len(df_ioc)
+        df_ioc = df_ioc.drop_duplicates()
+        nb_ioc_apres = len(df_ioc)
+        nb_ioc_doublons = nb_ioc_avant - nb_ioc_apres
+
+        df_vdc = pd.DataFrame(vdc, columns=OUTPUT_COLUMNS)
+        nb_vdc_avant = len(df_vdc)
+        df_vdc = df_vdc.drop_duplicates()
+        nb_vdc_apres = len(df_vdc)
+        nb_vdc_doublons = nb_vdc_avant - nb_vdc_apres
 
         df_contacts_sim = pd.DataFrame(contacts_sim, columns=CONTACTS_COLUMNS)
         nb_sim_avant = len(df_contacts_sim)
@@ -512,9 +552,15 @@ if __name__ == "__main__":
         print(f"\n  → Création du fichier Excel : {output_file_name}")
 
         with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
-            if nb_info_apres > 0:
-                df_output.to_excel(writer, sheet_name="Info_Perso", index=False)
-                print(f"     ✓ Feuille Info_Perso créée")
+            if nb_mdc_apres > 0:
+                df_mdc.to_excel(writer, sheet_name="MDC", index=False)
+                print(f"     ✓ Feuille MDC créée")
+            if nb_ioc_apres > 0:
+                df_ioc.to_excel(writer, sheet_name="IOC", index=False)
+                print(f"     ✓ Feuille IOC créée")
+            if nb_vdc_apres > 0:
+                df_vdc.to_excel(writer, sheet_name="VDC", index=False)
+                print(f"     ✓ Feuille VDC créée")
             if nb_sim_apres > 0:
                 df_contacts_sim.to_excel(writer, sheet_name="Feuil_Contacts", index=False)
                 print(f"     ✓ Feuille Feuil_Contacts créée")
@@ -526,8 +572,12 @@ if __name__ == "__main__":
                 print(f"     ✓ Feuille Feuil_Call créée")
 
         # Afficher les résultats (seulement pour les feuilles non vides)
-        if nb_info_apres > 0:
-            print(f"  ✓ Info_Perso : {nb_info_apres} entrées  # {nb_info_doublons} doublon(s) supprimé(s)")
+        if nb_mdc_apres > 0:
+            print(f"  ✓ MDC : {nb_mdc_apres} entrées  # {nb_mdc_doublons} doublon(s) supprimé(s)")
+        if nb_ioc_apres > 0:
+            print(f"  ✓ IOC : {nb_ioc_apres} entrées  # {nb_ioc_doublons} doublon(s) supprimé(s)")
+        if nb_vdc_apres > 0:
+            print(f"  ✓ VDC : {nb_vdc_apres} entrées  # {nb_vdc_doublons} doublon(s) supprimé(s)")
         if nb_sim_apres > 0:
             print(f"  ✓ Feuil_Contacts : {nb_sim_apres} entrées  # {nb_sim_doublons} doublon(s) supprimé(s)")
         if nb_wa_apres > 0:
