@@ -103,8 +103,8 @@ def clean_vdc_entries(entries_text):
         if url not in cleaned_info:
             cleaned_info.append(url)
 
-    # Retourner les informations séparées par des espaces ou des virgules
-    return ' | '.join(cleaned_info) if cleaned_info else entries_text
+    # Retourner la liste d'informations (pour créer une ligne par info)
+    return cleaned_info if cleaned_info else [entries_text]
 
 
 def is_phone_number(text):
@@ -214,25 +214,29 @@ def process_user_accounts(df, file_name):
         if is_phone_number(entries):
             Entite = "Moyen de com"
 
-        # Nettoyer les entrées pour les VDC
+        # Traiter différemment VDC et MDC
         if Entite == "Vecteur de com":
-            cleaned_entries = clean_vdc_entries(entries)
+            # Pour VDC : nettoyer et créer une ligne par information
+            cleaned_info_list = clean_vdc_entries(entries)
+            for info in cleaned_info_list:
+                entry = {
+                    "Entité": Entite,
+                    "Types": source if source and source != "nan" else "Unknown",
+                    "Numéro associé": info,
+                    "Name": account_name if account_name and account_name != "nan" else "",
+                    "nom du fichier": file_name
+                }
+                vdc_list.append(entry)
         else:
-            cleaned_entries = entries
-
-        entry = {
-            "Entité": Entite,
-            "Types": source if source and source != "nan" else "Unknown",
-            "Numéro associé": cleaned_entries,
-            "Name": account_name if account_name and account_name != "nan" else "",
-            "nom du fichier": file_name
-        }
-
-        # Ajouter à la bonne liste selon l'entité
-        if Entite == "Moyen de com":
+            # Pour MDC : garder tel quel
+            entry = {
+                "Entité": Entite,
+                "Types": source if source and source != "nan" else "Unknown",
+                "Numéro associé": entries,
+                "Name": account_name if account_name and account_name != "nan" else "",
+                "nom du fichier": file_name
+            }
             mdc_list.append(entry)
-        else:
-            vdc_list.append(entry)
 
     return mdc_list, vdc_list
 
