@@ -445,6 +445,7 @@ def process_excel_file(file_path, country_code="999"):
 
     # Extraire le nom de fichier sans extension
     file_name = os.path.splitext(os.path.basename(file_path))[0]
+    print(f"  🔍 DEBUG: file_name dans process_excel_file = '{file_name}'")
 
     try:
         xls = pd.ExcelFile(file_path)
@@ -562,6 +563,12 @@ if __name__ == "__main__":
         # Étape 2 : Traiter le fichier
         mdc, ioc, vdc, contacts_sim, contacts_whatsapp, call_log, _ = process_excel_file(file_path, country_code)
 
+        # DEBUG
+        if mdc:
+            print(f"  🔍 DEBUG: Premier MDC = {mdc[0]}")
+        if vdc:
+            print(f"  🔍 DEBUG: Premier VDC = {vdc[0]}")
+
         # Créer les DataFrames pour MDC et IOC (AVEC déduplication sur colonnes métiers uniquement)
         df_mdc = pd.DataFrame(mdc, columns=OUTPUT_COLUMNS)
         nb_mdc_avant = len(df_mdc)
@@ -578,6 +585,8 @@ if __name__ == "__main__":
         # VDC sans déduplication
         df_vdc = pd.DataFrame(vdc, columns=OUTPUT_COLUMNS)
         nb_vdc_apres = len(df_vdc)
+        if not df_vdc.empty:
+            print(f"  🔍 DEBUG: df_vdc['nom du fichier'].iloc[0] = '{df_vdc['nom du fichier'].iloc[0]}'")
 
         df_contacts_sim = pd.DataFrame(contacts_sim, columns=CONTACTS_COLUMNS)
         nb_sim_avant = len(df_contacts_sim)
