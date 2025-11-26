@@ -54,7 +54,7 @@ def get_country_code_from_imsi(imsi):
 def clean_vdc_entries(entries_text):
     """Nettoie et extrait les informations importantes pour les VDC (numéros, emails, IDs)"""
     if not entries_text or entries_text == "nan":
-        return ""
+        return []  # Retourner une liste vide, pas une string vide
 
     # Liste pour stocker les informations extraites
     cleaned_info = []
@@ -166,6 +166,10 @@ def process_device_info(df, file_name):
                     "nom du fichier": file_name
                 }
 
+                # DEBUG: Vérifier que file_name n'est pas vide
+                if not file_name:
+                    print(f"    ⚠️ WARNING: file_name est vide pour {mapping['Types']}")
+
                 # Ajouter à la bonne liste selon l'entité
                 if mapping["Entité"] == "Moyen de com":
                     mdc_list.append(entry)
@@ -220,6 +224,11 @@ def process_user_accounts(df, file_name):
                 "Name": account_name if account_name and account_name != "nan" else "",
                 "nom du fichier": file_name
             }
+
+            # DEBUG
+            if not file_name:
+                print(f"    ⚠️ WARNING: file_name est vide pour VDC {source}")
+
             vdc_list.append(entry)
 
     return mdc_list, vdc_list
