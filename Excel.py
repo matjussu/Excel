@@ -565,13 +565,20 @@ if __name__ == "__main__":
         # Étape 2 : Traiter le fichier
         mdc, ioc, vdc, contacts_sim, contacts_whatsapp, call_log, _ = process_excel_file(file_path, country_code)
 
-        # Créer les DataFrames pour MDC, IOC, VDC (sans déduplication)
+        # Créer les DataFrames pour MDC et IOC (AVEC déduplication)
         df_mdc = pd.DataFrame(mdc, columns=OUTPUT_COLUMNS)
+        nb_mdc_avant = len(df_mdc)
+        df_mdc = df_mdc.drop_duplicates()
         nb_mdc_apres = len(df_mdc)
+        nb_mdc_doublons = nb_mdc_avant - nb_mdc_apres
 
         df_ioc = pd.DataFrame(ioc, columns=OUTPUT_COLUMNS)
+        nb_ioc_avant = len(df_ioc)
+        df_ioc = df_ioc.drop_duplicates()
         nb_ioc_apres = len(df_ioc)
+        nb_ioc_doublons = nb_ioc_avant - nb_ioc_apres
 
+        # VDC sans déduplication
         df_vdc = pd.DataFrame(vdc, columns=OUTPUT_COLUMNS)
         nb_vdc_apres = len(df_vdc)
 
@@ -587,11 +594,9 @@ if __name__ == "__main__":
         nb_wa_apres = len(df_contacts_whatsapp)
         nb_wa_doublons = nb_wa_avant - nb_wa_apres
 
+        # Call log SANS déduplication
         df_call_log = pd.DataFrame(call_log, columns=CALL_LOG_COLUMNS)
-        nb_call_avant = len(df_call_log)
-        df_call_log = df_call_log.drop_duplicates()
         nb_call = len(df_call_log)
-        nb_call_doublons = nb_call_avant - nb_call
 
         # Générer le nom du fichier de sortie
         base_name = os.path.splitext(file_name)[0]
@@ -623,9 +628,9 @@ if __name__ == "__main__":
 
         # Afficher les résultats (seulement pour les feuilles non vides)
         if nb_mdc_apres > 0:
-            print(f"  ✓ MDC : {nb_mdc_apres} entrées")
+            print(f"  ✓ MDC : {nb_mdc_apres} entrées  # {nb_mdc_doublons} doublon(s) supprimé(s)")
         if nb_ioc_apres > 0:
-            print(f"  ✓ IOC : {nb_ioc_apres} entrées")
+            print(f"  ✓ IOC : {nb_ioc_apres} entrées  # {nb_ioc_doublons} doublon(s) supprimé(s)")
         if nb_vdc_apres > 0:
             print(f"  ✓ VDC : {nb_vdc_apres} entrées")
         if nb_sim_apres > 0:
@@ -633,7 +638,7 @@ if __name__ == "__main__":
         if nb_wa_apres > 0:
             print(f"  ✓ Feuil_What'sapp : {nb_wa_apres} entrées  # {nb_wa_doublons} doublon(s) supprimé(s)")
         if nb_call > 0:
-            print(f"  ✓ Feuil_Call : {nb_call} entrées  # {nb_call_doublons} doublon(s) supprimé(s)")
+            print(f"  ✓ Feuil_Call : {nb_call} entrées")
 
         print(f"  ✓ Fichier créé : {output_file_name}")
 
