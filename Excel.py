@@ -166,10 +166,6 @@ def process_device_info(df, file_name):
                     "nom du fichier": file_name
                 }
 
-                # DEBUG: Vérifier que file_name n'est pas vide
-                if not file_name:
-                    print(f"    ⚠️ WARNING: file_name est vide pour {mapping['Types']}")
-
                 # Ajouter à la bonne liste selon l'entité
                 if mapping["Entité"] == "Moyen de com":
                     mdc_list.append(entry)
@@ -224,11 +220,6 @@ def process_user_accounts(df, file_name):
                 "Name": account_name if account_name and account_name != "nan" else "",
                 "nom du fichier": file_name
             }
-
-            # DEBUG
-            if not file_name:
-                print(f"    ⚠️ WARNING: file_name est vide pour VDC {source}")
-
             vdc_list.append(entry)
 
     return mdc_list, vdc_list
@@ -445,7 +436,6 @@ def process_excel_file(file_path, country_code="999"):
 
     # Extraire le nom de fichier sans extension
     file_name = os.path.splitext(os.path.basename(file_path))[0]
-    print(f"  🔍 DEBUG: file_name dans process_excel_file = '{file_name}'")
 
     try:
         xls = pd.ExcelFile(file_path)
@@ -563,30 +553,28 @@ if __name__ == "__main__":
         # Étape 2 : Traiter le fichier
         mdc, ioc, vdc, contacts_sim, contacts_whatsapp, call_log, _ = process_excel_file(file_path, country_code)
 
-        # DEBUG
-        if mdc:
-            print(f"  🔍 DEBUG: Premier MDC = {mdc[0]}")
-        if vdc:
-            print(f"  🔍 DEBUG: Premier VDC = {vdc[0]}")
-
         # Créer les DataFrames pour MDC et IOC (AVEC déduplication sur colonnes métiers uniquement)
-        df_mdc = pd.DataFrame(mdc, columns=OUTPUT_COLUMNS)
+        df_mdc = pd.DataFrame(mdc)
+        if not df_mdc.empty:
+            df_mdc = df_mdc[OUTPUT_COLUMNS]
         nb_mdc_avant = len(df_mdc)
         df_mdc = df_mdc.drop_duplicates(subset=["Entité", "Types", "Numéro associé", "Name"])
         nb_mdc_apres = len(df_mdc)
         nb_mdc_doublons = nb_mdc_avant - nb_mdc_apres
 
-        df_ioc = pd.DataFrame(ioc, columns=OUTPUT_COLUMNS)
+        df_ioc = pd.DataFrame(ioc)
+        if not df_ioc.empty:
+            df_ioc = df_ioc[OUTPUT_COLUMNS]
         nb_ioc_avant = len(df_ioc)
         df_ioc = df_ioc.drop_duplicates(subset=["Entité", "Types", "Numéro associé", "Name"])
         nb_ioc_apres = len(df_ioc)
         nb_ioc_doublons = nb_ioc_avant - nb_ioc_apres
 
         # VDC sans déduplication
-        df_vdc = pd.DataFrame(vdc, columns=OUTPUT_COLUMNS)
-        nb_vdc_apres = len(df_vdc)
+        df_vdc = pd.DataFrame(vdc)
         if not df_vdc.empty:
-            print(f"  🔍 DEBUG: df_vdc['nom du fichier'].iloc[0] = '{df_vdc['nom du fichier'].iloc[0]}'")
+            df_vdc = df_vdc[OUTPUT_COLUMNS]
+        nb_vdc_apres = len(df_vdc)
 
         df_contacts_sim = pd.DataFrame(contacts_sim, columns=CONTACTS_COLUMNS)
         nb_sim_avant = len(df_contacts_sim)
