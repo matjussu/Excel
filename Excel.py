@@ -553,16 +553,16 @@ if __name__ == "__main__":
         # Étape 2 : Traiter le fichier
         mdc, ioc, vdc, contacts_sim, contacts_whatsapp, call_log, _ = process_excel_file(file_path, country_code)
 
-        # Créer les DataFrames pour MDC et IOC (AVEC déduplication)
+        # Créer les DataFrames pour MDC et IOC (AVEC déduplication sur colonnes métiers uniquement)
         df_mdc = pd.DataFrame(mdc, columns=OUTPUT_COLUMNS)
         nb_mdc_avant = len(df_mdc)
-        df_mdc = df_mdc.drop_duplicates()
+        df_mdc = df_mdc.drop_duplicates(subset=["Entité", "Types", "Numéro associé", "Name"])
         nb_mdc_apres = len(df_mdc)
         nb_mdc_doublons = nb_mdc_avant - nb_mdc_apres
 
         df_ioc = pd.DataFrame(ioc, columns=OUTPUT_COLUMNS)
         nb_ioc_avant = len(df_ioc)
-        df_ioc = df_ioc.drop_duplicates()
+        df_ioc = df_ioc.drop_duplicates(subset=["Entité", "Types", "Numéro associé", "Name"])
         nb_ioc_apres = len(df_ioc)
         nb_ioc_doublons = nb_ioc_avant - nb_ioc_apres
 
