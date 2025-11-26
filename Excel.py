@@ -601,7 +601,7 @@ if __name__ == "__main__":
         # Créer le fichier de sortie
         print(f"\n  → Création du fichier Excel : {output_file_name}")
 
-        with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
+        with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
             if nb_mdc_apres > 0:
                 df_mdc.to_excel(writer, sheet_name="MDC", index=False)
                 print(f"     ✓ Feuille MDC créée")
