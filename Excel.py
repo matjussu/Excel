@@ -125,7 +125,6 @@ def is_phone_number(text):
 
 def process_device_info(df, file_name):
     """Extrait les données de la feuille Device Info"""
-    print(f"[DEBUG process_device_info] file_name reçu = '{file_name}'")
     mdc_list = []
     ioc_list = []
     vdc_list = []
@@ -166,7 +165,6 @@ def process_device_info(df, file_name):
                     "Name": "",
                     "nom du fichier": file_name
                 }
-                print(f"[DEBUG] Entry créée dans process_device_info: {entry}")
 
                 # Ajouter à la bonne liste selon l'entité
                 if mapping["Entité"] == "Moyen de com":
@@ -186,7 +184,6 @@ def process_device_info(df, file_name):
 
 def process_user_accounts(df, file_name):
     """Extrait les données de la feuille User Accounts"""
-    print(f"[DEBUG process_user_accounts] file_name reçu = '{file_name}'")
     mdc_list = []
     vdc_list = []
 
@@ -230,7 +227,6 @@ def process_user_accounts(df, file_name):
             "Name": account_name if account_name and account_name != "nan" else "",
             "nom du fichier": file_name
         }
-        print(f"[DEBUG] Entry créée dans process_user_accounts: {entry}")
 
         # Ajouter à la bonne liste selon l'entité
         if Entite == "Moyen de com":
@@ -570,26 +566,14 @@ if __name__ == "__main__":
         mdc, ioc, vdc, contacts_sim, contacts_whatsapp, call_log, _ = process_excel_file(file_path, country_code)
 
         # Créer les DataFrames pour MDC, IOC, VDC (sans déduplication)
-        print(f"[DEBUG] Avant création DataFrame, longueur listes: mdc={len(mdc)}, ioc={len(ioc)}, vdc={len(vdc)}")
-        if len(mdc) > 0:
-            print(f"[DEBUG] Premier élément de mdc: {mdc[0]}")
-        if len(vdc) > 0:
-            print(f"[DEBUG] Premier élément de vdc: {vdc[0]}")
-
         df_mdc = pd.DataFrame(mdc, columns=OUTPUT_COLUMNS)
         nb_mdc_apres = len(df_mdc)
-        print(f"[DEBUG] df_mdc créé, colonnes: {df_mdc.columns.tolist()}")
-        if len(df_mdc) > 0:
-            print(f"[DEBUG] Première ligne df_mdc['nom du fichier']: '{df_mdc['nom du fichier'].iloc[0]}'")
 
         df_ioc = pd.DataFrame(ioc, columns=OUTPUT_COLUMNS)
         nb_ioc_apres = len(df_ioc)
 
         df_vdc = pd.DataFrame(vdc, columns=OUTPUT_COLUMNS)
         nb_vdc_apres = len(df_vdc)
-        print(f"[DEBUG] df_vdc créé, colonnes: {df_vdc.columns.tolist()}")
-        if len(df_vdc) > 0:
-            print(f"[DEBUG] Première ligne df_vdc['nom du fichier']: '{df_vdc['nom du fichier'].iloc[0]}'")
 
         df_contacts_sim = pd.DataFrame(contacts_sim, columns=CONTACTS_COLUMNS)
         nb_sim_avant = len(df_contacts_sim)
@@ -616,16 +600,6 @@ if __name__ == "__main__":
 
         # Créer le fichier de sortie
         print(f"\n  → Création du fichier Excel : {output_file_name}")
-
-        # DEBUG: Vérifier le contenu des DataFrames avant écriture
-        print(f"[DEBUG FINAL] Vérification avant écriture Excel:")
-        if nb_mdc_apres > 0:
-            print(f"  df_mdc.columns = {df_mdc.columns.tolist()}")
-            print(f"  df_mdc['nom du fichier'].iloc[0] = '{df_mdc['nom du fichier'].iloc[0]}'")
-            print(f"  df_mdc.head(1) = \n{df_mdc.head(1)}")
-        if nb_vdc_apres > 0:
-            print(f"  df_vdc.columns = {df_vdc.columns.tolist()}")
-            print(f"  df_vdc['nom du fichier'].iloc[0] = '{df_vdc['nom du fichier'].iloc[0]}'")
 
         with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
             if nb_mdc_apres > 0:
