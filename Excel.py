@@ -210,33 +210,17 @@ def process_user_accounts(df, file_name):
         if not entries or entries == "nan":
             continue
 
-        Entite = "Vecteur de com"
-        if is_phone_number(entries):
-            Entite = "Moyen de com"
-
-        # Traiter différemment VDC et MDC
-        if Entite == "Vecteur de com":
-            # Pour VDC : nettoyer et créer une ligne par information
-            cleaned_info_list = clean_vdc_entries(entries)
-            for info in cleaned_info_list:
-                entry = {
-                    "Entité": Entite,
-                    "Types": source if source and source != "nan" else "Unknown",
-                    "Numéro associé": info,
-                    "Name": account_name if account_name and account_name != "nan" else "",
-                    "nom du fichier": file_name
-                }
-                vdc_list.append(entry)
-        else:
-            # Pour MDC : garder tel quel
+        # Pour User Accounts : toujours traiter comme VDC et créer une ligne par information
+        cleaned_info_list = clean_vdc_entries(entries)
+        for info in cleaned_info_list:
             entry = {
-                "Entité": Entite,
+                "Entité": "Vecteur de com",
                 "Types": source if source and source != "nan" else "Unknown",
-                "Numéro associé": entries,
+                "Numéro associé": info,
                 "Name": account_name if account_name and account_name != "nan" else "",
                 "nom du fichier": file_name
             }
-            mdc_list.append(entry)
+            vdc_list.append(entry)
 
     return mdc_list, vdc_list
 
